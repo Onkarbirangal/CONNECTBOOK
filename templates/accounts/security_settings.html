@@ -97,6 +97,21 @@
         <form method="POST">
             {% csrf_token %}
             <input type="hidden" name="change_password" value="1">
+
+            {% if password_form.errors %}
+                <div class="alert alert-danger p-2 small mb-3">
+                    <ul class="mb-0 ps-3">
+                        {% for error in password_form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        {% for field in password_form %}
+                            {% for error in field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
             
             <div class="mb-3">
                 <label class="form-label fw-semibold">Current Password</label>

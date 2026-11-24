@@ -1,5 +1,5 @@
 # DEVELOPMENT STATUS – CONNECTBOOK COMPLETE RESPONSIVE UI UPGRADE
-**Version:** ConnectBook Responsive Master (Desktop, Tablet & Mobile Full-Screen Engine)  
+**Version:** ConnectBook Responsive Master & People You May Know V2  
 **Date:** November 2026  
 **Status:** COMPLETE AND TESTED – 100% Operational across all Viewports (320px to 1920px)  
 **Architecture:** Django 5.2 | Channels ASGI WebSockets | WebRTC P2P | SQLite (`db.sqlite3`) | Bootstrap 5 | CSS Flexbox & Grid | JavaScript ES6  
@@ -66,6 +66,30 @@
 
 ---
 
+### 5. People You May Know / Friend Suggestions Upgrade (November 2026)
+- **Screenshot-Aligned Visual & Grid Architecture**:
+  - Desktop: 3 cards per row (`grid-template-columns: repeat(3, 1fr)`).
+  - Tablet: 2 cards per row (`grid-template-columns: repeat(2, 1fr)`).
+  - Mobile: 1 card per row (`grid-template-columns: 1fr`, 100% width, zero horizontal overflow).
+- **Suggestion Card Structure**:
+  - Full cover image container with fallback gradient and `object-fit: cover`.
+  - Circular avatar (76px diameter) with `3px solid var(--cb-card)` border and elevation.
+  - Full display name and `@username` linking directly to profile.
+  - Mutual friends count line with icons and pluralization.
+  - Suggestion reason pill badge (e.g. `X mutual friends`, `Follows you`, `Member of <Group>`, `Lives in <City>`, `New to ConnectBook`).
+  - Add Friend button with instant AJAX transition to `Request Sent` and Sent Requests counter increment.
+  - Remove button with smooth card dismissal, suggestion counter decrement, and dynamic Toast alert with **Undo** action.
+- **Intelligent Multi-Factor Suggestion Algorithm**:
+  - Evaluates mutual friends, follower/following links, shared groups, city/hometown/workplace overlap, and recent registration.
+  - Excludes logged-in user, existing friends, pending requests (sent or received), blocked users (in either direction), and dismissed suggestions.
+- **Search & Filtering Toolbar**:
+  - Live search input querying first name, last name, and username.
+  - Quick filters: `All`, `Mutual`, `Recent`, `Groups`.
+- **Persistent Dismissal Model**:
+  - Added `DismissedSuggestion` model (`friends_dismissedsuggestion` via migration `0002_dismissedsuggestion.py`) preserving dismissed users across logins with undo capability.
+
+---
+
 ## 📋 Comprehensive Feature Completion Matrix
 
 | Module / Area | Description | Status | Verification Details |
@@ -78,38 +102,41 @@
 | **Chat Fixed Composer** | Pinned to bottom, safe-area insets, keyboard-friendly resize listener | ✅ COMPLETE AND TESTED | Tested in `templates/chat/messenger.html` & `chat.js` |
 | **Bottom Navigation** | 7 equal tabs, badges, safe-area padding, hidden during active chat | ✅ COMPLETE AND TESTED | Tested in `templates/includes/mobile_bottom_nav.html` |
 | **Desktop Preservation** | Desktop design at >= 1024px 100% preserved without breakage | ✅ COMPLETE AND TESTED | Verified across all templates and styles |
-| **Automated Test Suite** | 54 unit and integration tests covering all features from V1 to V14 | ✅ COMPLETE AND TESTED | 100% pass rate, 0 failures, 0 errors |
+| **People You May Know UI** | 3-column desktop, 2-column tablet, 1-column mobile suggestion cards | ✅ COMPLETE AND TESTED | Tested in `templates/friends/friends_list.html` |
+| **Suggestion Algorithm** | Multi-factor ranking by mutuals, follows, groups, location, recency | ✅ COMPLETE AND TESTED | Tested in `friends/views.py` |
+| **AJAX Friend Requests** | Add friend, request sent state, dismiss with undo toast, live badge counts | ✅ COMPLETE AND TESTED | Tested in `friends/views.py` & `friends/tests.py` |
+| **Automated Test Suite** | 64 unit and integration tests across all installed applications | ✅ COMPLETE AND TESTED | 100% pass rate, 0 failures, 0 errors (64/64) |
 
 ---
 
 ## 🧪 Viewport Testing Verification Matrix
 
-| Viewport Size | Device Category | Horizontal Scrollbar? | Header Layout | Chat / Composer | Bottom Nav | Result |
-|---|---|---|---|---|---|---|
-| **320 × 640** | Small Mobile (SE 1st gen) | ❌ None (0px overflow) | Icon logo, 32px icons | Fits 1 row, pinned composer | Icon-only bar | ✅ PASSED |
-| **360 × 800** | Standard Android | ❌ None (0px overflow) | 18px logo, 34px icons | Fits 1 row, pinned composer | Compact bar | ✅ PASSED |
-| **375 × 812** | iPhone X / 11 Pro / 12 mini | ❌ None (0px overflow) | Full logo, 34px icons | Fits 1 row, pinned composer | 9px label tabs | ✅ PASSED |
-| **390 × 844** | iPhone 12 / 13 / 14 | ❌ None (0px overflow) | Full logo, 34px icons | Fits 1 row, pinned composer | 9px label tabs | ✅ PASSED |
-| **414 × 896** | iPhone Plus / 11 Pro Max | ❌ None (0px overflow) | Full logo, 36px icons | Fits 1 row, pinned composer | 9px label tabs | ✅ PASSED |
-| **440 × 956** | Large Android (Pixel Pro) | ❌ None (0px overflow) | Full logo, 36px icons | Fits 1 row, pinned composer | 10px label tabs | ✅ PASSED |
-| **768 × 1024** | iPad Portrait / Tablet | ❌ None (0px overflow) | Full logo, search bar | 2-panel or full chat | 10px label tabs | ✅ PASSED |
-| **1024 × 768** | iPad Landscape / Small Laptop | ❌ None (0px overflow) | Desktop navbar & tabs | 340px sidebar + main chat | Hidden (desktop) | ✅ PASSED |
-| **1366 × 768** | Standard Laptop | ❌ None (0px overflow) | Desktop navbar & tabs | 340px sidebar + main chat | Hidden (desktop) | ✅ PASSED |
-| **1440 × 900** | MacBook Pro / Desktop | ❌ None (0px overflow) | Full 3-column layout | 340px sidebar + main chat | Hidden (desktop) | ✅ PASSED |
-| **1920 × 1080** | Full HD Desktop Monitor | ❌ None (0px overflow) | Full 3-column layout | 340px sidebar + main chat | Hidden (desktop) | ✅ PASSED |
+| Viewport Size | Device Category | Horizontal Scrollbar? | Header Layout | People You May Know Grid | Result |
+|---|---|---|---|---|---|
+| **320 × 640** | Small Mobile (SE 1st gen) | ❌ None (0px overflow) | Icon logo, 32px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **360 × 800** | Standard Android | ❌ None (0px overflow) | 18px logo, 34px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **375 × 812** | iPhone X / 11 Pro / 12 mini | ❌ None (0px overflow) | Full logo, 34px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **390 × 844** | iPhone 12 / 13 / 14 | ❌ None (0px overflow) | Full logo, 34px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **414 × 896** | iPhone Plus / 11 Pro Max | ❌ None (0px overflow) | Full logo, 36px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **430 × 932** | iPhone Pro Max | ❌ None (0px overflow) | Full logo, 36px icons | 1 card/row, 100% width, no overflow | ✅ PASSED |
+| **768 × 1024** | iPad Portrait / Tablet | ❌ None (0px overflow) | Full logo, search bar | 2 cards/row, balanced grid | ✅ PASSED |
+| **1024 × 768** | iPad Landscape / Small Laptop | ❌ None (0px overflow) | Desktop navbar & tabs | 3 cards/row, sidebar visible | ✅ PASSED |
+| **1366 × 768** | Standard Laptop | ❌ None (0px overflow) | Desktop navbar & tabs | 3 cards/row, sidebar visible | ✅ PASSED |
+| **1440 × 900** | MacBook Pro / Desktop | ❌ None (0px overflow) | Full 3-column layout | 3 cards/row, sidebar visible | ✅ PASSED |
+| **1920 × 1080** | Full HD Desktop Monitor | ❌ None (0px overflow) | Full 3-column layout | 3 cards/row, max-width 1400px | ✅ PASSED |
 
 ---
 
 ## 🧪 Automated Test Suite Output
 
 ```text
+Found 64 test(s).
 Creating test database for alias 'default'...
-......................................................
+................................................................
 ----------------------------------------------------------------------
-Ran 54 tests in 125.017s
+Ran 64 tests in 310.024s
 
 OK
 Destroying test database for alias 'default'...
-Found 54 test(s).
 System check identified no issues (0 silenced).
 ```

@@ -10,7 +10,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.sessions.models import Session
 from django.db.models import Q
 from django.contrib.auth import get_user_model
-from .forms import RegisterForm, LoginForm, UserProfileForm, UserBasicInfoForm, UserPrivacySettingForm
+from .forms import RegisterForm, LoginForm, UserProfileForm, UserBasicInfoForm, UserPrivacySettingForm, ConnectBookPasswordChangeForm
 from .models import (
     UserProfile, BlockedUser, RestrictedUser, MutedUser, UserPreference, Follow,
     UserPrivacySetting, UserSessionRecord, DataExportRequest, AccountDeletionRequest
@@ -70,6 +70,27 @@ def login_view(request):
                         request.session.set_expiry(0) # Session expires on browser close
                     else:
                         request.session.set_expiry(1209600) # 2 weeks
+
+                    # Record active session in UserSessionRecord
+                    current_key = request.session.session_key
+                    if not current_key:
+                        request.session.save()
+                        current_key = request.session.session_key
+                    if current_key:
+                        ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+                        ua = request.META.get('HTTP_USER_AGENT', 'Browser')
+                        device = 'Mobile Device' if ('Mobile' in ua or 'Android' in ua or 'iPhone' in ua) else 'Desktop Computer'
+                        UserSessionRecord.objects.update_or_create(
+                            session_key=current_key,
+                            defaults={
+                                'user': user,
+                                'ip_address': ip,
+                                'user_agent': ua[:250],
+                                'device_type': device,
+                                'is_active': True,
+                            }
+                        )
+
                     next_url = request.GET.get('next')
                     if next_url and not url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
                         next_url = None
@@ -83,6 +104,9 @@ def login_view(request):
 
 
 def logout_view(request):
+    current_key = request.session.session_key
+    if current_key:
+        UserSessionRecord.objects.filter(session_key=current_key).update(is_active=False)
     logout(request)
     messages.info(request, "You have been logged out.")
     return redirect('accounts:login')
@@ -277,9 +301,16 @@ def profile_view(request, username):
 
 @login_required
 def update_avatar_view(request):
-    if request.method == 'POST' and request.FILES.get('avatar'):
+    if request.method == 'POST':
+        avatar_file = request.FILES.get('avatar')
+        if not avatar_file:
+            messages.error(request, "Please select an image file to upload as your avatar.")
+            return redirect('accounts:profile', username=request.user.username)
+        if hasattr(avatar_file, 'size') and avatar_file.size > 5 * 1024 * 1024:
+            messages.error(request, "Avatar image size must be under 5MB.")
+            return redirect('accounts:profile', username=request.user.username)
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        profile.avatar = request.FILES['avatar']
+        profile.avatar = avatar_file
         profile.save()
         messages.success(request, "Profile picture updated successfully!")
     return redirect('accounts:profile', username=request.user.username)
@@ -287,9 +318,16 @@ def update_avatar_view(request):
 
 @login_required
 def update_cover_view(request):
-    if request.method == 'POST' and request.FILES.get('cover_photo'):
+    if request.method == 'POST':
+        cover_file = request.FILES.get('cover_photo')
+        if not cover_file:
+            messages.error(request, "Please select an image file to upload as your cover photo.")
+            return redirect('accounts:profile', username=request.user.username)
+        if hasattr(cover_file, 'size') and cover_file.size > 5 * 1024 * 1024:
+            messages.error(request, "Cover photo size must be under 5MB.")
+            return redirect('accounts:profile', username=request.user.username)
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        profile.cover_photo = request.FILES['cover_photo']
+        profile.cover_photo = cover_file
         profile.save()
         messages.success(request, "Cover photo updated successfully!")
     return redirect('accounts:profile', username=request.user.username)
@@ -341,7 +379,7 @@ def settings_view(request):
     prefs, _ = UserPreference.objects.get_or_create(user=request.user)
 
     if request.method == 'POST' and 'change_password' in request.POST:
-        password_form = PasswordChangeForm(request.user, request.POST)
+        password_form = ConnectBookPasswordChangeForm(request.user, request.POST)
         if password_form.is_valid():
             user = password_form.save()
             update_session_auth_hash(request, user)
@@ -350,7 +388,7 @@ def settings_view(request):
         else:
             messages.error(request, "Please correct the password errors.")
     else:
-        password_form = PasswordChangeForm(request.user)
+        password_form = ConnectBookPasswordChangeForm(request.user)
 
     blocked_users = BlockedUser.objects.filter(blocker=request.user).select_related('blocked', 'blocked__profile')
 
@@ -539,7 +577,7 @@ def security_settings_view(request):
 
     if request.method == 'POST':
         if 'change_password' in request.POST:
-            password_form = PasswordChangeForm(request.user, request.POST)
+            password_form = ConnectBookPasswordChangeForm(request.user, request.POST)
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
@@ -565,7 +603,7 @@ def security_settings_view(request):
             messages.info(request, "All sessions logged out.")
             return redirect('accounts:login')
     else:
-        password_form = PasswordChangeForm(request.user)
+        password_form = ConnectBookPasswordChangeForm(request.user)
 
     active_sessions = UserSessionRecord.objects.filter(user=request.user, is_active=True).order_by('-last_activity')
 

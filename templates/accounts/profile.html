@@ -349,11 +349,15 @@
                                 <h6 class="text-muted fw-bold text-uppercase small">Overview</h6>
                                 <p><strong>Bio:</strong> {{ profile.bio|default:"No bio provided." }}</p>
                                 <p><strong>Relationship:</strong> {{ profile.relationship_status|default:"Not specified" }}</p>
-                                {% if profile.show_dob and profile_user.date_of_birth %}
-                                    <p><strong>Birthday:</strong> {{ profile_user.date_of_birth|date:"F d, Y" }}</p>
+                                {% if is_own_profile or profile.show_dob %}
+                                    {% if profile_user.date_of_birth %}
+                                        <p><strong>Birthday:</strong> {{ profile_user.date_of_birth|date:"F d, Y" }}{% if is_own_profile and not profile.show_dob %} <span class="badge bg-secondary-subtle text-secondary small">Hidden from public</span>{% endif %}</p>
+                                    {% endif %}
                                 {% endif %}
-                                {% if profile.show_email and profile_user.email %}
-                                    <p><strong>Email:</strong> {{ profile_user.email }}</p>
+                                {% if is_own_profile or profile.show_email %}
+                                    {% if profile_user.email %}
+                                        <p><strong>Email:</strong> {{ profile_user.email }}{% if is_own_profile and not profile.show_email %} <span class="badge bg-secondary-subtle text-secondary small">Hidden from public</span>{% endif %}</p>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                             <div class="col-md-6">

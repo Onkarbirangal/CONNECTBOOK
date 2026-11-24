@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
 from .models import UserProfile, UserPreference, UserPrivacySetting
 
 User = get_user_model()
@@ -20,9 +20,15 @@ class RegisterForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email__iexact=email).exists():
+        if email and User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
         return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if username and User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("A user with this username already exists.")
+        return username
 
 
 class LoginForm(forms.Form):
@@ -41,6 +47,8 @@ class UserProfileForm(forms.ModelForm):
         ]
         widgets = {
             'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Add a short bio...'}),
+            'avatar': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'cover_photo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'city': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Current city'}),
             'hometown': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Hometown'}),
             'work': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Workplace / Company'}),
@@ -51,6 +59,18 @@ class UserProfileForm(forms.ModelForm):
             'show_email': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_dob': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        if avatar and hasattr(avatar, 'size') and avatar.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Avatar image size must be under 5MB.")
+        return avatar
+
+    def clean_cover_photo(self):
+        cover = self.cleaned_data.get('cover_photo')
+        if cover and hasattr(cover, 'size') and cover.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Cover photo size must be under 5MB.")
+        return cover
 
 
 class UserBasicInfoForm(forms.ModelForm):
@@ -63,6 +83,25 @@ class UserBasicInfoForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'date_of_birth', 'gender']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            qs = User.objects.filter(email__iexact=email)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("An account with this email already exists.")
+        return email
+
+
+class ConnectBookPasswordChangeForm(PasswordChangeForm):
+    """Custom PasswordChangeForm providing uniform Bootstrap form-control styling."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
+
 
 
 class UserPrivacySettingForm(forms.ModelForm):

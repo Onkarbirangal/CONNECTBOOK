@@ -300,4 +300,150 @@ class AccountsTestCase(TestCase):
         self.user.profile.refresh_from_db()
         self.assertEqual(self.user.profile.profile_visibility, 'friends')
 
+    def test_registration_validation_and_duplicate_handling(self):
+        """Test registration constraints: duplicate email, case-insensitive username, and password validation."""
+        # Duplicate email
+        res_dup_email = self.client.post(reverse('accounts:register'), {
+            'first_name': 'New',
+            'last_name': 'Person',
+            'username': 'newuser1',
+            'email': 'TEST@example.com',  # matches testuser's email in different case
+            'password1': 'StrongPass123!',
+            'password2': 'StrongPass123!',
+        })
+        self.assertEqual(res_dup_email.status_code, 200)
+        self.assertFormError(res_dup_email.context['form'], 'email', 'An account with this email already exists.')
+
+        # Duplicate username (case-insensitive)
+        res_dup_user = self.client.post(reverse('accounts:register'), {
+            'first_name': 'New',
+            'last_name': 'Person',
+            'username': 'TESTUSER',  # matches testuser in uppercase
+            'email': 'unique@example.com',
+            'password1': 'StrongPass123!',
+            'password2': 'StrongPass123!',
+        })
+        self.assertEqual(res_dup_user.status_code, 200)
+        self.assertFormError(res_dup_user.context['form'], 'username', 'A user with this username already exists.')
+
+        # Password mismatch
+        res_mismatch = self.client.post(reverse('accounts:register'), {
+            'first_name': 'New',
+            'last_name': 'Person',
+            'username': 'brandnewuser',
+            'email': 'brandnew@example.com',
+            'password1': 'StrongPass123!',
+            'password2': 'DifferentPass456!',
+        })
+        self.assertEqual(res_mismatch.status_code, 200)
+        self.assertFalse(User.objects.filter(username='brandnewuser').exists())
+
+        # Successful registration
+        res_success = self.client.post(reverse('accounts:register'), {
+            'first_name': 'Brand',
+            'last_name': 'New',
+            'username': 'brandnewuser',
+            'email': 'brandnew@example.com',
+            'password1': 'ComplexPassword99!',
+            'password2': 'ComplexPassword99!',
+        })
+        self.assertEqual(res_success.status_code, 302)
+        created_user = User.objects.filter(username='brandnewuser').first()
+        self.assertIsNotNone(created_user)
+        self.assertTrue(hasattr(created_user, 'profile'))
+        self.assertTrue(hasattr(created_user, 'privacy_settings'))
+
+    def test_login_flow_and_session_recording(self):
+        """Test login via email/username, deactivated user handling, and session tracking."""
+        # Login via email
+        res_email = self.client.post(reverse('accounts:login'), {
+            'login': 'test@example.com',
+            'password': 'Password123!',
+        })
+        self.assertEqual(res_email.status_code, 302)
+        self.assertTrue(UserSessionRecord.objects.filter(user=self.user, is_active=True).exists())
+
+        # Logout deactivates session record
+        self.client.get(reverse('accounts:logout'))
+        # Session record for that session key should be inactive
+        self.assertFalse(UserSessionRecord.objects.filter(user=self.user, is_active=True).exists())
+
+        # Deactivated user login rejection
+        self.user.is_deactivated = True
+        self.user.save()
+        res_deact = self.client.post(reverse('accounts:login'), {
+            'login': 'testuser',
+            'password': 'Password123!',
+        })
+        self.assertEqual(res_deact.status_code, 200)
+        self.assertContains(res_deact, "This account is currently deactivated")
+
+    def test_edit_profile_duplicate_email_rejection(self):
+        """Test edit profile prevents changing email to another registered user's email."""
+        other = User.objects.create_user(username='otherperson', email='other@example.com', password='Password123!')
+        self.client.login(username='testuser', password='Password123!')
+
+        res = self.client.post(reverse('accounts:edit_profile'), {
+            'first_name': 'Test',
+            'last_name': 'User',
+            'email': 'OTHER@example.com',
+            'gender': 'unspecified',
+            'profile_visibility': 'public',
+        })
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'test@example.com')  # Email did not change
+
+    def test_avatar_and_cover_upload_views(self):
+        """Test updating avatar and cover photo with file presence validation."""
+        self.client.login(username='testuser', password='Password123!')
+
+        # 1. Update avatar without file -> warning/error message and redirect
+        res_empty = self.client.post(reverse('accounts:update_avatar'))
+        self.assertEqual(res_empty.status_code, 302)
+
+        # 2. Update avatar with small valid file
+        tiny_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff'
+            b'\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00'
+            b'\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
+        )
+        avatar_file = SimpleUploadedFile("avatar.gif", tiny_gif, content_type="image/gif")
+        res_avatar = self.client.post(reverse('accounts:update_avatar'), {'avatar': avatar_file})
+        self.assertEqual(res_avatar.status_code, 302)
+        self.user.profile.refresh_from_db()
+        self.assertTrue(bool(self.user.profile.avatar))
+
+        # 3. Update cover with valid file
+        cover_file = SimpleUploadedFile("cover.gif", tiny_gif, content_type="image/gif")
+        res_cover = self.client.post(reverse('accounts:update_cover'), {'cover_photo': cover_file})
+        self.assertEqual(res_cover.status_code, 302)
+        self.user.profile.refresh_from_db()
+        self.assertTrue(bool(self.user.profile.cover_photo))
+
+    def test_password_change_flow(self):
+        """Test password change form validation and session hash update."""
+        self.client.login(username='testuser', password='Password123!')
+
+        # Invalid short password
+        res_short = self.client.post(reverse('accounts:security_settings'), {
+            'change_password': '1',
+            'old_password': 'Password123!',
+            'new_password1': '123',
+            'new_password2': '123',
+        })
+        self.assertEqual(res_short.status_code, 200)
+
+        # Successful password change
+        res_valid = self.client.post(reverse('accounts:security_settings'), {
+            'change_password': '1',
+            'old_password': 'Password123!',
+            'new_password1': 'NewValidPassword456!',
+            'new_password2': 'NewValidPassword456!',
+        })
+        self.assertEqual(res_valid.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewValidPassword456!'))
+
+
 
