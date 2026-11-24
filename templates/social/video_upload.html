@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload Video | ConnectBook Watch{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <div class="cb-card p-4 shadow-sm border" style="border-radius: 12px;">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4">
+            <h4 class="fw-bold mb-0"><i class="bi bi-cloud-arrow-up-fill text-danger me-2"></i>Upload Video to Watch</h4>
+            <a href="{% url 'social:video_feed' %}" class="btn btn-sm btn-light border rounded-pill">Cancel</a>
+        </div>
+
+        <form action="{% url 'social:upload_video' %}" method="POST" enctype="multipart/form-data" id="videoUploadForm">
+            {% csrf_token %}
+
+            <!-- Video File Input -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">Select Video File <span class="text-danger">*</span></label>
+                <div class="p-4 border border-dashed rounded text-center bg-light dark-bg-secondary" style="border-width: 2px !important; cursor: pointer;" onclick="document.getElementById('videoFileInput').click();">
+                    <i class="bi bi-camera-reels text-danger fs-1 mb-2 d-block"></i>
+                    <div class="fw-semibold">Click to select or drag and drop video</div>
+                    <div class="text-muted small">Supported formats: MP4, WebM, MOV &bull; Maximum file size: 50MB</div>
+                    <div class="mt-2 text-primary fw-bold small" id="selectedVideoFileName"></div>
+                </div>
+                <input type="file" name="video_file" id="videoFileInput" accept="video/mp4,video/webm,video/quicktime" class="d-none" required onchange="if(this.files[0]) document.getElementById('selectedVideoFileName').textContent = this.files[0].name + ' (' + (this.files[0].size/1024/1024).toFixed(1) + ' MB)';">
+            </div>
+
+            <!-- Video Title -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Video Title <span class="text-danger">*</span></label>
+                <input type="text" name="title" class="form-control" placeholder="Give your video a catchy title..." required maxlength="200">
+            </div>
+
+            <!-- Category & Privacy -->
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <label class="form-label fw-bold">Category</label>
+                    <select name="category" class="form-select">
+                        {% for val, label in categories %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-bold">Audience & Privacy</label>
+                    <select name="privacy" class="form-select">
+                        <option value="public">Public (Everyone)</option>
+                        <option value="friends">Friends Only</option>
+                        <option value="private">Private (Only Me)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Thumbnail Upload -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Custom Thumbnail (Optional)</label>
+                <input type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" class="form-control form-control-sm">
+                <div class="form-text">Upload a high-quality 16:9 thumbnail image to boost video discovery.</div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">Description & Hashtags</label>
+                <textarea name="description" rows="4" class="form-control" placeholder="Tell viewers what your video is about. Use #hashtags to increase reach..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-danger w-100 py-2 fs-6 fw-bold rounded-pill shadow-sm" id="uploadSubmitBtn">
+                <i class="bi bi-cloud-check-fill me-1"></i> Publish Video
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

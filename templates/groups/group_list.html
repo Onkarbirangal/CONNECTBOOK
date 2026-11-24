@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Groups | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4 px-2 px-md-3" style="max-width: 1050px;">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <h3 class="fw-bold mb-0"><i class="bi bi-collection-fill text-info me-2"></i>Communities & Groups</h3>
+        <a href="{% url 'groups_app:create' %}" class="btn btn-cb-primary btn-sm py-2">
+            <i class="bi bi-plus-lg me-1"></i> Create New Group
+        </a>
+    </div>
+
+    <!-- My Groups -->
+    <div class="cb-card p-3 p-md-4 mb-4">
+        <h5 class="fw-bold mb-3">Groups You've Joined</h5>
+        {% if my_groups %}
+            <div class="row g-3">
+                {% for g in my_groups %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="cb-card p-3 h-100 d-flex flex-column justify-content-between" style="background: var(--cb-bg);">
+                            <div>
+                                <img src="{{ g.get_cover_url }}" class="w-100 rounded mb-2" style="height: 120px; object-fit: cover;" alt="">
+                                <h6 class="fw-bold mb-1">{{ g.name }}</h6>
+                                <p class="text-muted small mb-2">{{ g.description|truncatewords:15 }}</p>
+                                <span class="badge bg-secondary mb-3">{{ g.get_privacy_display }}</span>
+                            </div>
+                            <a href="{% url 'groups_app:detail' slug=g.slug %}" class="btn btn-sm btn-cb-primary w-100">
+                                View Group
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">You have not joined any groups yet. Explore suggestions below!</p>
+        {% endif %}
+    </div>
+
+    <!-- Suggested Groups -->
+    <h5 class="fw-bold mb-3">Discover Groups</h5>
+    <div class="row g-3">
+        {% if suggested_groups %}
+            {% for g in suggested_groups %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="cb-card p-3 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <img src="{{ g.get_cover_url }}" class="w-100 rounded mb-2" style="height: 120px; object-fit: cover;" alt="">
+                            <h6 class="fw-bold mb-1">{{ g.name }}</h6>
+                            <p class="text-muted small mb-2">{{ g.description|truncatewords:12 }}</p>
+                            <span class="badge bg-light text-dark border mb-3">{{ g.get_privacy_display }}</span>
+                        </div>
+                        <a href="{% url 'groups_app:detail' slug=g.slug %}" class="btn btn-sm btn-outline-primary w-100">
+                            Learn More & Join
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-muted">No additional groups to discover right now.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

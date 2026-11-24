@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Pages | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-flag-fill text-primary me-2"></i>Pages</h3>
+            <p class="text-muted small mb-0">Discover businesses, public figures, causes, and communities on ConnectBook.</p>
+        </div>
+        <div>
+            <a href="{% url 'pages_app:create_page' %}" class="btn btn-cb-primary fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i>Create New Page
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="cb-card p-3 mb-4">
+        <form method="GET" class="row g-2 align-items-center">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--cb-border);"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Search pages by name, category, or description..." style="border-color: var(--cb-border);">
+                </div>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-cb-secondary flex-grow-1">Search</button>
+                {% if query %}
+                    <a href="{% url 'pages_app:page_list' %}?tab={{ tab }}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'discover' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'pages_app:page_list' %}?tab=discover">
+                <i class="bi bi-compass me-1"></i>Discover Pages
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'following' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'pages_app:page_list' %}?tab=following">
+                <i class="bi bi-person-check me-1"></i>Followed Pages ({{ following_count }})
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'my_pages' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'pages_app:page_list' %}?tab=my_pages">
+                <i class="bi bi-briefcase me-1"></i>Your Pages ({{ my_pages_count }})
+            </a>
+        </li>
+    </ul>
+
+    <!-- Pages Grid -->
+    <div class="row g-4">
+        {% for p in pages %}
+            <div class="col-md-6 col-lg-4">
+                <div class="cb-card h-100 d-flex flex-column overflow-hidden">
+                    <div style="height: 100px; background-image: url('{{ p.get_cover_url }}'); background-size: cover; background-position: center;"></div>
+                    <div class="p-3 pt-0 flex-grow-1 d-flex flex-column position-relative">
+                        <div class="d-flex align-items-end justify-content-between mb-2" style="margin-top: -30px;">
+                            <img src="{{ p.get_avatar_url }}" class="rounded-circle border border-3 border-white shadow-sm" style="width: 60px; height: 60px; object-fit: cover;" alt="">
+                            <span class="badge bg-primary-subtle text-primary">{{ p.get_category_display }}</span>
+                        </div>
+                        <h5 class="fw-bold mb-1">
+                            <a href="{% url 'pages_app:page_detail' slug=p.slug %}" class="text-decoration-none" style="color: var(--cb-text);">
+                                {{ p.name }}
+                                {% if p.is_verified %}
+                                    <i class="bi bi-patch-check-fill text-primary ms-1" title="Verified Page"></i>
+                                {% endif %}
+                            </a>
+                        </h5>
+                        <div class="text-muted small mb-2"><i class="bi bi-people me-1"></i>{{ p.total_followers }} follower{{ p.total_followers|pluralize }}</div>
+                        {% if p.bio %}
+                            <p class="small text-muted mb-3 flex-grow-1">{{ p.bio|truncatechars:100 }}</p>
+                        {% else %}
+                            <p class="small text-muted mb-3 flex-grow-1">{{ p.description|truncatechars:100|default:"Welcome to our official ConnectBook page!" }}</p>
+                        {% endif %}
+
+                        <div class="d-flex gap-2 mt-auto">
+                            <a href="{% url 'pages_app:page_detail' slug=p.slug %}" class="btn btn-sm btn-cb-primary flex-grow-1">
+                                View Page
+                            </a>
+                            <a href="{% url 'pages_app:toggle_follow' slug=p.slug %}" class="btn btn-sm btn-outline-secondary">
+                                {% if p.is_follower %}Following{% else %}Follow{% endif %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-flag text-muted fs-1 d-block mb-3"></i>
+                <h5 class="text-muted">No pages found in this section.</h5>
+                <a href="{% url 'pages_app:create_page' %}" class="btn btn-cb-primary mt-2">Create the first page</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

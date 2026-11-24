@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Video | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 650px;">
+    <div class="cb-card p-4 shadow-sm border" style="border-radius: 12px;">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4">
+            <h4 class="fw-bold mb-0">Edit Video Details</h4>
+            <a href="{% url 'social:video_detail' video_id=video.id %}" class="btn btn-sm btn-light border rounded-pill">Cancel</a>
+        </div>
+
+        <form action="{% url 'social:edit_video' video_id=video.id %}" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Title</label>
+                <input type="text" name="title" value="{{ video.title }}" class="form-control" required>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <label class="form-label fw-bold">Category</label>
+                    <select name="category" class="form-select">
+                        {% for val, label in categories %}
+                            <option value="{{ val }}" {% if video.category == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label fw-bold">Privacy</label>
+                    <select name="privacy" class="form-select">
+                        <option value="public" {% if video.privacy == 'public' %}selected{% endif %}>Public</option>
+                        <option value="friends" {% if video.privacy == 'friends' %}selected{% endif %}>Friends Only</option>
+                        <option value="private" {% if video.privacy == 'private' %}selected{% endif %}>Private</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Change Thumbnail</label>
+                <input type="file" name="thumbnail" accept="image/*" class="form-control form-control-sm">
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold">Description</label>
+                <textarea name="description" rows="4" class="form-control">{{ video.description }}</textarea>
+            </div>
+            <div class="d-flex align-items-center justify-content-between">
+                <button type="submit" class="btn btn-primary rounded-pill px-4">Save Changes</button>
+                <form action="{% url 'social:delete_video' video_id=video.id %}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this video?');" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Delete Video</button>
+                </form>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

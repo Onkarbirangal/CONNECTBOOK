@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Content Unavailable | ConnectBook{% endblock %}
+{% block content %}
+<div class="container text-center py-5">
+    <div class="cb-card p-5 mx-auto" style="max-width: 500px;">
+        <i class="bi bi-shield-slash fs-1 text-danger mb-3"></i>
+        <h4 class="fw-bold">This Content Isn't Available Right Now</h4>
+        <p class="text-muted">When this happens, it's usually because the owner only shared it with a small group of people, changed who can see it or it's been deleted, or an active block restriction is in place.</p>
+        <a href="{% url 'social:feed' %}" class="btn btn-cb-primary mt-3">Go to News Feed</a>
+    </div>
+</div>
+{% endblock %}

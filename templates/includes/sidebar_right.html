@@ -1,0 +1,127 @@
+{% load static %}
+<div class="cb-sidebar-right">
+    <!-- Birthdays (if any today) -->
+    {% if birthday_friends %}
+    <div class="cb-card mb-3">
+        <div class="cb-card-header">
+            <span class="fw-bold small text-muted text-uppercase">
+                <i class="bi bi-gift-fill text-danger me-1"></i> Birthdays
+            </span>
+        </div>
+        <div class="p-3">
+            {% for bfriend in birthday_friends %}
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <img src="{{ bfriend.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                    <div class="small">
+                        <a href="{% url 'accounts:profile' username=bfriend.username %}" class="fw-bold text-decoration-none text-reset">
+                            {{ bfriend.get_display_name }}
+                        </a> has a birthday today! Send your best wishes.
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Friend Suggestions -->
+    <div class="cb-card mb-3">
+        <div class="cb-card-header d-flex align-items-center justify-content-between">
+            <span class="fw-bold small text-muted text-uppercase">Suggested Friends</span>
+            <a href="{% url 'friends:suggestions' %}" class="small text-primary text-decoration-none">See All</a>
+        </div>
+        <div class="p-2">
+            {% if suggested_friends %}
+                {% for sug in suggested_friends %}
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded hover-bg">
+                        <a href="{% url 'accounts:profile' username=sug.username %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                            <img src="{{ sug.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <div>
+                                <div class="fw-bold small text-truncate" style="max-width: 130px;">{{ sug.get_display_name }}</div>
+                                <div class="text-muted" style="font-size: 11px;">@{{ sug.username }}</div>
+                            </div>
+                        </a>
+                        <form action="{% url 'friends:send_request' user_id=sug.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-cb-primary py-1 px-2" style="font-size: 12px;">
+                                <i class="bi bi-person-plus-fill"></i> Add
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-muted small p-3">No new suggestions at the moment.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Suggested Groups -->
+    {% if suggested_groups %}
+    <div class="cb-card mb-3">
+        <div class="cb-card-header d-flex align-items-center justify-content-between">
+            <span class="fw-bold small text-muted text-uppercase">Suggested Groups</span>
+            <a href="{% url 'groups_app:list' %}" class="small text-primary text-decoration-none">See All</a>
+        </div>
+        <div class="p-2">
+            {% for grp in suggested_groups %}
+                <div class="d-flex align-items-center justify-content-between p-2 rounded hover-bg">
+                    <a href="{% url 'groups_app:detail' slug=grp.slug %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                        <img src="{{ grp.get_cover_url }}" class="cb-avatar cb-avatar-sm rounded-circle" alt="">
+                        <div>
+                            <div class="fw-bold small text-truncate" style="max-width: 140px;">{{ grp.name }}</div>
+                            <div class="text-muted" style="font-size: 11px;">{{ grp.memberships.count }} members</div>
+                        </div>
+                    </a>
+                    <a href="{% url 'groups_app:detail' slug=grp.slug %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 12px;">Visit</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Suggested Pages -->
+    {% if suggested_pages %}
+    <div class="cb-card mb-3">
+        <div class="cb-card-header d-flex align-items-center justify-content-between">
+            <span class="fw-bold small text-muted text-uppercase">Suggested Pages</span>
+            <a href="{% url 'pages_app:page_list' %}" class="small text-primary text-decoration-none">See All</a>
+        </div>
+        <div class="p-2">
+            {% for pg in suggested_pages %}
+                <div class="d-flex align-items-center justify-content-between p-2 rounded hover-bg">
+                    <a href="{% url 'pages_app:page_detail' slug=pg.slug %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                        <img src="{{ pg.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                        <div>
+                            <div class="fw-bold small text-truncate" style="max-width: 140px;">{{ pg.name }}</div>
+                            <div class="text-muted" style="font-size: 11px;">{{ pg.get_category_display }}</div>
+                        </div>
+                    </a>
+                    <a href="{% url 'pages_app:page_detail' slug=pg.slug %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 12px;">Visit</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Active Conversations / Contacts -->
+    <div class="cb-card">
+        <div class="cb-card-header d-flex align-items-center justify-content-between">
+            <span class="fw-bold small text-muted text-uppercase">Contacts</span>
+            <a href="{% url 'chat:inbox' %}" class="small text-primary text-decoration-none">Open Chat</a>
+        </div>
+        <div class="p-2">
+            {% if contacts_list %}
+                {% for contact in contacts_list %}
+                    <a href="{% url 'chat:direct' user_id=contact.id %}" class="cb-sidebar-item py-2 px-2">
+                        <div class="position-relative">
+                            <img src="{{ contact.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 10px; height: 10px;"></span>
+                        </div>
+                        <span class="small fw-semibold text-truncate" style="max-width: 180px;">{{ contact.get_display_name }}</span>
+                    </a>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-muted small p-3">Add friends to start messaging!</div>
+            {% endif %}
+        </div>
+    </div>
+</div>

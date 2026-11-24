@@ -1,0 +1,401 @@
+{% load static %}
+<div class="cb-post-card" id="post-{{ post.id }}" data-post-id="{{ post.id }}">
+    <!-- Post Header -->
+    <div class="cb-post-header">
+        <div class="cb-post-author-info">
+            <a href="{% url 'accounts:profile' username=post.author.username %}">
+                <img src="{{ post.author.profile.get_avatar_url }}" class="cb-avatar" alt="">
+            </a>
+            <div>
+                <div class="d-flex align-items-center flex-wrap gap-1">
+                    <a href="{% url 'accounts:profile' username=post.author.username %}" class="cb-post-author-name text-decoration-none">
+                        {{ post.author.get_display_name }}
+                    </a>
+                    {% if post.feeling_text %}
+                        <span class="text-muted small">is {{ post.feeling_icon|default:'😊' }} feeling <strong>{{ post.feeling_text }}</strong></span>
+                    {% endif %}
+                    {% if post.location_name %}
+                        <span class="text-muted small">&bull; at <strong class="text-danger-emphasis"><i class="bi bi-geo-alt-fill text-danger"></i> {{ post.location_name }}</strong>{% if post.location_address %}<span class="text-muted"> ({{ post.location_address }})</span>{% endif %}</span>
+                    {% endif %}
+                    {% if post.tagged_users.all %}
+                        <span class="text-muted small">&bull; with 
+                            {% for u in post.tagged_users.all %}
+                                <a href="{% url 'accounts:profile' username=u.username %}" class="fw-bold text-decoration-none text-body">{{ u.get_display_name }}</a>{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        </span>
+                    {% endif %}
+                    {% if post.group %}
+                        <span class="text-muted small">in <a href="{% url 'groups_app:detail' slug=post.group.slug %}" class="fw-bold text-decoration-none">{{ post.group.name }}</a></span>
+                    {% endif %}
+                </div>
+                <div class="cb-post-meta">
+                    <span>{{ post.created_at|timesince }} ago</span> &bull;
+                    {% if post.privacy == 'public' %}
+                        <i class="bi bi-globe" title="Public"></i>
+                    {% elif post.privacy == 'friends' %}
+                        <i class="bi bi-people-fill" title="Friends"></i>
+                    {% elif post.privacy == 'friends_except' %}
+                        <i class="bi bi-person-x-fill text-warning" title="Friends except..."></i>
+                    {% elif post.privacy == 'specific_friends' %}
+                        <i class="bi bi-person-check-fill text-success" title="Specific friends"></i>
+                    {% elif post.privacy == 'custom' %}
+                        <i class="bi bi-gear-wide-connected text-info" title="Custom audience"></i>
+                    {% else %}
+                        <i class="bi bi-lock-fill" title="Only Me"></i>
+                    {% endif %}
+                    {% if post.is_pinned %}
+                        &bull; <span class="badge bg-primary-subtle text-primary py-0 px-1" style="font-size: 11px;"><i class="bi bi-pin-angle-fill"></i> Pinned</span>
+                    {% endif %}
+                    {% if post.status == 'draft' %}
+                        &bull; <span class="badge bg-warning-subtle text-warning-emphasis py-0 px-1" style="font-size: 11px;">Draft</span>
+                    {% elif post.status == 'scheduled' %}
+                        &bull; <span class="badge bg-info-subtle text-info py-0 px-1" style="font-size: 11px;"><i class="bi bi-clock me-1"></i>Scheduled for {{ post.scheduled_at|date:'M d, H:i' }}</span>
+                    {% elif post.is_archived or post.status == 'archived' %}
+                        &bull; <span class="badge bg-secondary-subtle text-secondary py-0 px-1" style="font-size: 11px;">Archived</span>
+                    {% endif %}
+                    {% if post.is_edited %}
+                        &bull; <span class="text-muted fst-italic" style="font-size: 11px;" title="Edited on {{ post.updated_at|date:'M d, Y H:i' }}">(edited)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Options Dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-sm text-muted p-2" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+                <i class="bi bi-three-dots fs-5"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end cb-dropdown-menu">
+                <li>
+                    <button type="button" class="cb-dropdown-item w-100 border-0 bg-transparent text-start" onclick="copyPostLink('{{ request.scheme }}://{{ request.get_host }}{% url 'social:post_detail' post_id=post.id %}')">
+                        <i class="bi bi-link-45deg fs-5"></i> Copy Link
+                    </button>
+                </li>
+                <li>
+                    <form action="{% url 'social:toggle_save_post' post_id=post.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                            <i class="bi bi-bookmark"></i> Save Post
+                        </button>
+                    </form>
+                </li>
+                {% if post.author == user %}
+                <li>
+                    <button type="button" class="cb-dropdown-item w-100 border-0 bg-transparent text-start" onclick="openPostInsights({{ post.id }})">
+                        <i class="bi bi-bar-chart-line text-info"></i> View Insights
+                    </button>
+                </li>
+                <li>
+                    <form action="{% url 'social:toggle_pin_post' post_id=post.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                            <i class="bi bi-pin-angle"></i> {% if post.is_pinned %}Unpin Post{% else %}Pin Post{% endif %}
+                        </button>
+                    </form>
+                </li>
+                <li>
+                    <form action="{% url 'social:toggle_archive_post' post_id=post.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                            <i class="bi bi-archive"></i> {% if post.is_archived %}Unarchive Post{% else %}Archive Post{% endif %}
+                        </button>
+                    </form>
+                </li>
+                <li>
+                    <form action="{% url 'social:toggle_comments_post' post_id=post.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                            <i class="bi bi-chat-dots"></i> {% if post.comments_enabled %}Disable Comments{% else %}Enable Comments{% endif %}
+                        </button>
+                    </form>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'social:edit_post' post_id=post.id %}">
+                        <i class="bi bi-pencil"></i> Edit Post
+                    </a>
+                </li>
+                <li>
+                    <form action="{% url 'social:manage_trash_post' post_id=post.id %}" method="POST" onsubmit="return confirm('Move this post to Trash? You can restore it anytime within 30 days.');" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="trash">
+                        <button type="submit" class="cb-dropdown-item text-danger w-100 border-0 bg-transparent text-start">
+                            <i class="bi bi-trash"></i> Move to Trash
+                        </button>
+                    </form>
+                </li>
+                {% else %}
+                <li>
+                    <a class="cb-dropdown-item text-danger" href="{% url 'social:report_content' target_type='post' target_id=post.id %}">
+                        <i class="bi bi-flag"></i> Report Post
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Milestone / Life Event Banner -->
+    {% if post.milestone_title %}
+        <div class="px-3 pt-1 pb-2">
+            <div class="p-2 px-3 rounded bg-warning bg-opacity-10 border border-warning-subtle d-flex align-items-center gap-2">
+                <i class="bi bi-star-fill text-warning fs-5"></i>
+                <div>
+                    <span class="badge bg-warning text-dark text-uppercase" style="font-size: 10px;">Milestone</span>
+                    <span class="fw-bold ms-1 text-body">{{ post.milestone_title }}</span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Post Text Content (Styled Background or Standard) -->
+    {% if post.background_style and post.background_style != 'none' and not post.media_files.all %}
+        <div class="cb-styled-post-content cb-post-bg-{{ post.background_style }} m-0">
+            <span>{{ post.content }}</span>
+        </div>
+    {% elif post.content %}
+        <div class="cb-post-content">{{ post.content }}</div>
+    {% endif %}
+
+    <!-- Media Files Gallery -->
+    {% if post.media_files.all %}
+        <div class="cb-post-media-grid grid-{{ post.media_files.all|length|default:1 }}" data-post-id="{{ post.id }}">
+            {% for media in post.media_files.all %}
+                {% if media.media_type == 'image' %}
+                    <div class="position-relative overflow-hidden w-100 h-100">
+                        <img src="{{ media.file.url }}" class="cb-post-media-item" alt="{{ media.alt_text|default:'Post image' }}"
+                             data-src="{{ media.file.url }}"
+                             data-caption="{{ media.caption|default:'' }}"
+                             data-alt="{{ media.alt_text|default:'' }}"
+                             onclick="openLightbox({{ post.id }}, {{ forloop.counter0 }})">
+                        {% if media.caption %}
+                            <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white small" style="background: linear-gradient(transparent, rgba(0,0,0,0.75)); pointer-events: none;">
+                                {{ media.caption }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% elif media.media_type == 'video' %}
+                    <video src="{{ media.file.url }}" controls class="cb-post-media-item" style="max-height: 480px; width: 100%;"></video>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Link Preview Card -->
+    {% if post.link_url %}
+        <div class="px-3 pb-2 pt-1">
+            <div class="cb-post-link-preview border rounded overflow-hidden" style="border-color: var(--cb-border);">
+                <a href="{{ post.link_url }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-body d-block">
+                    {% if post.link_image %}
+                        <img src="{{ post.link_image }}" class="w-100" style="max-height: 250px; object-fit: cover;" alt="{{ post.link_title|default:'Preview' }}" onerror="this.style.display='none'">
+                    {% endif %}
+                    <div class="p-3 bg-body-tertiary">
+                        <div class="text-muted text-uppercase small" style="font-size: 11px;"><i class="bi bi-box-arrow-up-right me-1"></i>{{ post.link_url|slice:":50" }}</div>
+                        <div class="fw-bold fs-6 my-1">{{ post.link_title|default:post.link_url }}</div>
+                        {% if post.link_description %}
+                            <div class="text-muted small" style="font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ post.link_description }}</div>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Original Post if Shared -->
+    {% if post.original_post %}
+        <div class="m-2 m-md-3 p-3 rounded border" style="border-color: var(--cb-border) !important; background: var(--cb-bg);">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <img src="{{ post.original_post.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                <div>
+                    <div class="fw-bold small">{{ post.original_post.author.get_display_name }}</div>
+                    <div class="text-muted" style="font-size: 11px;">{{ post.original_post.created_at|timesince }} ago</div>
+                </div>
+            </div>
+            {% if post.original_post.content %}
+                <div class="small mb-2">{{ post.original_post.content }}</div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Interactive Poll Section -->
+    {% if post.poll %}
+        <div class="m-3 p-3 rounded border cb-poll-container" id="poll-container-{{ post.poll.id }}" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>{{ post.poll.question }}</h6>
+                {% if post.poll.is_expired %}
+                    <span class="badge bg-secondary-subtle text-secondary small">Closed</span>
+                {% elif post.poll.expires_at %}
+                    <span class="badge bg-info-subtle text-info small" title="Ends {{ post.poll.expires_at|date:'M d, Y H:i' }}">
+                        <i class="bi bi-clock me-1"></i>{{ post.poll.expires_at|timeuntil }} left
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Poll Options -->
+            <div class="vstack gap-2 mb-3 mt-2" id="poll-options-{{ post.id }}">
+                {% for opt in post.poll.options.all %}
+                    <div class="position-relative p-2 rounded border option-card" style="cursor: {% if not post.poll.is_expired and user.is_authenticated %}pointer{% else %}default{% endif %}; overflow: hidden; background: var(--cb-card);"
+                         {% if not post.poll.is_expired and user.is_authenticated %}onclick="votePoll({{ post.id }}, {{ opt.id }})"{% endif %}>
+                        
+                        <!-- Progress Bar Fill -->
+                        <div class="position-absolute top-0 start-0 h-100 bg-primary bg-opacity-10" style="width: {{ opt.percentage }}%; transition: width 0.4s ease; z-index: 1;"></div>
+                        
+                        <div class="position-relative d-flex justify-content-between align-items-center" style="z-index: 2;">
+                            <span class="fw-semibold small">
+                                {{ opt.text }}
+                            </span>
+                            <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 11px;">
+                                {{ opt.percentage }}% ({{ opt.votes_count }})
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center text-muted small" style="font-size: 12px;">
+                <span id="poll-votes-count-{{ post.id }}">{{ post.poll.total_votes }} vote{{ post.poll.total_votes|pluralize }}</span>
+                <span>Click an option to cast your vote</span>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Stats Bar -->
+    <div class="cb-post-stats">
+        <div class="d-flex align-items-center gap-1">
+            <span class="cb-reaction-count-text">
+                {% if post.total_reactions > 0 %}
+                    <span class="badge bg-primary rounded-pill"><i class="bi bi-hand-thumbs-up-fill"></i> {{ post.total_reactions }}</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span role="button" onclick="document.getElementById('comments-section-{{ post.id }}').classList.toggle('d-none');">
+                {{ post.total_comments }} Comments
+            </span>
+            <span>{{ post.total_shares }} Shares</span>
+            {% if post.views_count %}
+                <span class="text-muted small"><i class="bi bi-eye"></i> {{ post.views_count }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actions Bar with Facebook Reactions -->
+    <div class="cb-post-actions">
+        <!-- Floating Reactions Picker -->
+        <div class="cb-reaction-picker">
+            <span class="cb-reaction-item" data-reaction="like" title="Like">👍</span>
+            <span class="cb-reaction-item" data-reaction="love" title="Love">❤️</span>
+            <span class="cb-reaction-item" data-reaction="care" title="Care">🥰</span>
+            <span class="cb-reaction-item" data-reaction="haha" title="Haha">😆</span>
+            <span class="cb-reaction-item" data-reaction="wow" title="Wow">😮</span>
+            <span class="cb-reaction-item" data-reaction="sad" title="Sad">😢</span>
+            <span class="cb-reaction-item" data-reaction="angry" title="Angry">😡</span>
+        </div>
+
+        <button class="cb-post-action-btn cb-like-btn" data-current-reaction="">
+            <i class="bi bi-hand-thumbs-up cb-action-icon"></i>
+            <span class="cb-action-label">Like</span>
+        </button>
+
+        <button class="cb-post-action-btn" onclick="document.getElementById('comments-section-{{ post.id }}').classList.remove('d-none'); document.getElementById('comment-input-{{ post.id }}').focus();">
+            <i class="bi bi-chat-text"></i>
+            <span>Comment</span>
+        </button>
+
+        {% if post.allow_sharing %}
+        <form action="{% url 'social:share_post' post_id=post.id %}" method="POST" class="m-0 flex-grow-1 d-flex">
+            {% csrf_token %}
+            <button type="submit" class="cb-post-action-btn w-100">
+                <i class="bi bi-share"></i>
+                <span>Share</span>
+            </button>
+        </form>
+        {% else %}
+        <button class="cb-post-action-btn flex-grow-1 text-muted" disabled title="Sharing disabled by author">
+            <i class="bi bi-lock"></i>
+            <span>Share</span>
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Comments Section -->
+    <div class="cb-comments-section" id="comments-section-{{ post.id }}">
+        <!-- Add Comment Form -->
+        {% if post.comments_enabled %}
+        <form action="{% url 'social:add_comment' post_id=post.id %}" method="POST" class="cb-comment-input-box">
+            {% csrf_token %}
+            <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+            <input type="text" name="content" id="comment-input-{{ post.id }}" class="cb-comment-input" placeholder="Write a comment..." required autocomplete="off">
+            <button type="submit" class="btn btn-sm btn-cb-primary rounded-pill px-3" aria-label="Send comment"><i class="bi bi-send-fill"></i></button>
+        </form>
+        {% else %}
+        <div class="p-2 text-center text-muted fst-italic small bg-light rounded">
+            <i class="bi bi-chat-slash me-1"></i> Comments are turned off for this post.
+        </div>
+        {% endif %}
+
+        <!-- Comments List -->
+        <div class="cb-comments-list mt-3">
+            {% for comment in post.comments.all %}
+                {% if not comment.parent %}
+                    <div class="d-flex gap-2 mb-3" id="comment-{{ comment.id }}">
+                        <a href="{% url 'accounts:profile' username=comment.author.username %}">
+                            <img src="{{ comment.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                        </a>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="cb-comment-bubble">
+                                <a href="{% url 'accounts:profile' username=comment.author.username %}" class="cb-comment-author text-decoration-none">
+                                    {{ comment.author.get_display_name }}
+                                </a>
+                                <div class="cb-comment-text">{{ comment.content }}</div>
+                            </div>
+                            <div class="cb-comment-actions">
+                                <span>{{ comment.created_at|timesince }} ago</span>
+                                <span class="cb-comment-action-link" onclick="document.getElementById('reply-form-{{ comment.id }}').classList.toggle('d-none');">Reply</span>
+                                {% if comment.author == user %}
+                                    <form action="{% url 'social:delete_comment' comment_id=comment.id %}" method="POST" class="d-inline m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="border-0 bg-transparent text-danger p-0 cb-comment-action-link">Delete</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+
+                            <!-- Nested Replies -->
+                            {% if comment.replies.all %}
+                                <div class="mt-2 ps-2 ps-sm-3 border-start">
+                                    {% for reply in comment.replies.all %}
+                                        <div class="d-flex gap-2 mb-2">
+                                            <a href="{% url 'accounts:profile' username=reply.author.username %}">
+                                                <img src="{{ reply.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" style="width: 26px; height: 26px;" alt="">
+                                            </a>
+                                            <div class="overflow-hidden">
+                                                <div class="cb-comment-bubble py-1 px-3">
+                                                    <a href="{% url 'accounts:profile' username=reply.author.username %}" class="cb-comment-author text-decoration-none small">
+                                                        {{ reply.author.get_display_name }}
+                                                    </a>
+                                                    <div class="cb-comment-text small">{{ reply.content }}</div>
+                                                </div>
+                                                <div class="cb-comment-actions">
+                                                    <span>{{ reply.created_at|timesince }} ago</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+
+                            <!-- Reply Form -->
+                            <form action="{% url 'social:add_comment' post_id=post.id %}" method="POST" id="reply-form-{{ comment.id }}" class="d-none mt-2 ps-2 ps-sm-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                                <div class="d-flex gap-2">
+                                    <input type="text" name="content" class="cb-comment-input form-control-sm" placeholder="Write a reply..." required>
+                                    <button type="submit" class="btn btn-sm btn-cb-primary rounded-pill px-2">Reply</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>

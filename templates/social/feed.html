@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ConnectBook | News Feed{% endblock %}
+
+{% block content %}
+<div class="cb-layout-container">
+    <!-- LEFT SIDEBAR (Desktop >= 992px) -->
+    {% include 'includes/sidebar_left.html' %}
+
+    <!-- CENTER FEED (Responsive across all screens) -->
+    <div class="cb-feed-center">
+        <!-- Stories Carousel -->
+        <div class="cb-stories-wrapper">
+            <!-- Create Story Card -->
+            <a href="{% url 'stories:create_story' %}" class="cb-story-card cb-create-story-card text-decoration-none">
+                <img src="{{ current_user_profile.get_avatar_url }}" class="cb-create-story-thumb" alt="">
+                <div class="cb-create-story-btn"><i class="bi bi-plus"></i></div>
+                <div class="cb-create-story-label">Create Story</div>
+            </a>
+
+            <!-- User Stories List -->
+            {% if stories_list %}
+                {% for st in stories_list %}
+                    <div class="cb-story-card" data-author-id="{{ st.author.id }}" style="background-image: url('{% if st.latest_story.media_file %}{{ st.latest_story.media_file.url }}{% else %}{{ st.author.profile.get_avatar_url }}{% endif %}'); background-color: #242526;">
+                        <div class="cb-story-card-overlay"></div>
+                        <img src="{{ st.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm cb-story-avatar" alt="">
+                        <div class="cb-story-author text-truncate">{{ st.author.get_display_name }}</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Feed Tabs Navigation -->
+        <div class="cb-card mb-3 p-2 cb-feed-tabs align-items-center justify-content-start" style="border-radius: 12px;">
+            <a href="{% url 'social:feed' %}?tab=for_you" class="btn btn-sm {% if active_tab == 'for_you' or not active_tab %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-stars me-1"></i> For You
+            </a>
+            <a href="{% url 'social:feed' %}?tab=friends" class="btn btn-sm {% if active_tab == 'friends' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-people me-1"></i> Friends
+            </a>
+            <a href="{% url 'social:feed' %}?tab=following" class="btn btn-sm {% if active_tab == 'following' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-person-check me-1"></i> Following
+            </a>
+            <a href="{% url 'social:feed' %}?tab=trending" class="btn btn-sm {% if active_tab == 'trending' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-fire me-1"></i> Trending
+            </a>
+            <a href="{% url 'social:feed' %}?tab=latest" class="btn btn-sm {% if active_tab == 'latest' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-clock-history me-1"></i> Latest
+            </a>
+            <a href="{% url 'social:feed' %}?tab=drafts" class="btn btn-sm {% if active_tab == 'drafts' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-file-earmark-text me-1"></i> My Drafts
+            </a>
+            <a href="{% url 'social:feed' %}?tab=archived" class="btn btn-sm {% if active_tab == 'archived' %}btn-primary text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-archive me-1"></i> Archived
+            </a>
+        </div>
+
+        <!-- Post Composer Trigger Card -->
+        <div class="cb-composer-card">
+            <div class="cb-composer-top">
+                <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar" alt="{{ user.username }}">
+                <button class="cb-composer-trigger" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                    What's on your mind, {{ user.first_name }}?
+                </button>
+            </div>
+            <div class="cb-composer-bottom">
+                <button class="cb-composer-action" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                    <i class="bi bi-camera-video-fill text-danger fs-5"></i>
+                    <span>Live Video</span>
+                </button>
+                <button class="cb-composer-action" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                    <i class="bi bi-images text-success fs-5"></i>
+                    <span>Photo/Video</span>
+                </button>
+                <button class="cb-composer-action" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                    <i class="bi bi-emoji-smile-fill text-warning fs-5"></i>
+                    <span>Feeling/Activity</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Feed Posts Container -->
+        <div id="postsFeedContainer">
+            {% if posts %}
+                {% for post in posts %}
+                    {% include 'includes/post_card.html' with post=post %}
+                {% endfor %}
+            {% else %}
+                <div class="cb-card text-center p-4 p-md-5">
+                    <i class="bi bi-newspaper fs-1 text-primary mb-3"></i>
+                    <h4 class="fw-bold">Welcome to ConnectBook!</h4>
+                    <p class="text-muted small">Your news feed is fresh and waiting. Share a post or connect with suggested friends to start seeing their updates!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR (Desktop >= 1200px) -->
+    {% include 'includes/sidebar_right.html' %}
+</div>
+
+<!-- Post Composer Modal Included -->
+{% include 'includes/post_composer_modal.html' %}
+
+{% endblock %}

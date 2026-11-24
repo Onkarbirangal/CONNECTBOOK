@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ group.name }} | ConnectBook Groups{% endblock %}
+
+{% block content %}
+<div class="container py-2 py-md-3 px-2 px-md-3" style="max-width: 960px;">
+    <!-- Group Banner -->
+    <div class="cb-profile-header mb-4">
+        <div class="cb-cover-photo-container" style="height: 260px;">
+            <img src="{{ group.get_cover_url }}" class="cb-cover-photo-img" alt="">
+        </div>
+        <div class="p-3 p-md-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h2 class="fw-bold mb-1">{{ group.name }}</h2>
+                <div class="text-muted small">
+                    <i class="bi {% if group.privacy == 'public' %}bi-globe{% else %}bi-lock-fill{% endif %}"></i> {{ group.get_privacy_display }} &bull; {{ members_count }} member{{ members_count|pluralize }}
+                </div>
+                {% if group.description %}
+                    <p class="text-muted mt-2 mb-0" style="max-width: 600px;">{{ group.description }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                {% if is_member %}
+                    <form action="{% url 'groups_app:leave' slug=group.slug %}" method="POST" onsubmit="return confirm('Are you sure you want to leave this group?');" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-cb-secondary">
+                            <i class="bi bi-check-lg text-success me-1"></i> Joined &bull; Leave
+                        </button>
+                    </form>
+                {% elif has_pending_join %}
+                    <button class="btn btn-cb-secondary" disabled>
+                        <i class="bi bi-clock-history me-1"></i> Join Request Pending
+                    </button>
+                {% else %}
+                    <form action="{% url 'groups_app:join' slug=group.slug %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-cb-primary">
+                            <i class="bi bi-plus-lg me-1"></i> Join Group
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Feed -->
+        <div class="col-lg-8">
+            {% if is_member %}
+                <!-- Post Composer Trigger Card in Group -->
+                <div class="cb-composer-card">
+                    <div class="cb-composer-top">
+                        <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar" alt="">
+                        <button class="cb-composer-trigger" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                            Write something to {{ group.name }}...
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Custom Modal for Group Post -->
+                <div class="modal fade" id="createPostModal" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content" style="background: var(--cb-card); color: var(--cb-text); border: 1px solid var(--cb-border);">
+                            <div class="modal-header border-bottom">
+                                <h5 class="modal-title fw-bold">Post to {{ group.name }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="{% url 'social:create_post' %}" method="POST" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <input type="hidden" name="group_id" value="{{ group.id }}">
+                                <div class="modal-body">
+                                    <textarea name="content" class="form-control border-0 p-0 fs-5 mb-3" rows="4" placeholder="What's on your mind?" style="background: transparent; color: var(--cb-text); resize: none; box-shadow: none;" required></textarea>
+                                    <div class="p-2 rounded border" style="background: var(--cb-bg);">
+                                        <input type="file" name="media" multiple accept="image/*,video/*" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0">
+                                    <button type="submit" class="btn btn-cb-primary w-100">Post</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if posts %}
+                {% for post in posts %}
+                    {% include 'includes/post_card.html' with post=post %}
+                {% endfor %}
+            {% else %}
+                <div class="cb-card text-center p-5 text-muted">
+                    <i class="bi bi-chat-left-dots fs-1 mb-2"></i>
+                    <h5>No Group Posts Yet</h5>
+                    <p class="small">Be the first to share something with this community!</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="col-lg-4">
+            <div class="cb-card p-3 mb-3">
+                <h6 class="fw-bold mb-3">About this group</h6>
+                <p class="small text-muted mb-3">{{ group.description|default:"No description provided." }}</p>
+                <div class="small mb-2"><i class="bi bi-clock me-2"></i> Created {{ group.created_at|date:"F Y" }}</div>
+                <div class="small"><i class="bi bi-person me-2"></i> Admin: <strong>{{ group.creator.get_display_name }}</strong></div>
+            </div>
+
+            <div class="cb-card p-3">
+                <h6 class="fw-bold mb-3">Members ({{ members_count }})</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for m in members_preview %}
+                        <a href="{% url 'accounts:profile' username=m.user.username %}" title="{{ m.user.get_display_name }}">
+                            <img src="{{ m.user.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

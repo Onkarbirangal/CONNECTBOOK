@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Watch & Videos | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-md-4 px-2 px-md-4">
+    <!-- Top Watch Header & Search -->
+    <div class="d-flex align-items-md-center justify-content-between flex-column flex-md-row gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 fs-3 fs-md-2"><i class="bi bi-play-btn-fill text-danger me-2"></i>ConnectBook Watch</h2>
+            <div class="text-muted small">Explore trending videos, gaming streams, tutorials, and creators from around the world.</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form action="{% url 'social:video_feed' %}" method="GET" class="d-flex align-items-center gap-2">
+                <div class="input-group input-group-sm" style="max-width: 260px;">
+                    <input type="text" name="q" value="{{ query }}" class="form-control rounded-pill-start" placeholder="Search videos...">
+                    <button type="submit" class="btn btn-outline-secondary rounded-pill-end"><i class="bi bi-search"></i></button>
+                </div>
+            </form>
+            <a href="{% url 'social:upload_video' %}" class="btn btn-danger btn-sm py-2 px-3 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload Video
+            </a>
+            <a href="{% url 'social:reels' %}" class="btn btn-outline-danger btn-sm py-2 px-3 rounded-pill fw-semibold">
+                <i class="bi bi-film me-1"></i> Reels
+            </a>
+        </div>
+    </div>
+
+    <!-- Feed Tabs & Category Bar -->
+    <div class="d-flex flex-column gap-2 mb-4">
+        <!-- Feed Tabs -->
+        <div class="cb-feed-tabs align-items-center">
+            <a href="{% url 'social:video_feed' %}" class="btn btn-sm {% if tab == 'for_you' or not tab %}btn-danger text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-stars me-1"></i> For You
+            </a>
+            <a href="{% url 'social:video_feed' %}?tab=trending" class="btn btn-sm {% if tab == 'trending' %}btn-danger text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-fire me-1"></i> Trending
+            </a>
+            <a href="{% url 'social:video_feed' %}?tab=my_videos" class="btn btn-sm {% if tab == 'my_videos' %}btn-danger text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-person-video me-1"></i> My Videos
+            </a>
+            <a href="{% url 'social:video_feed' %}?tab=saved" class="btn btn-sm {% if tab == 'saved' %}btn-danger text-white fw-bold{% else %}btn-light text-muted{% endif %} rounded-pill px-3 py-1">
+                <i class="bi bi-bookmark-fill me-1"></i> Saved Videos
+            </a>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="cb-feed-tabs pt-1 pb-1">
+            <a href="{% url 'social:video_feed' %}{% if tab %}?tab={{ tab }}{% endif %}" class="btn btn-sm {% if not selected_category %}btn-secondary text-white{% else %}btn-light border text-muted{% endif %} rounded-pill px-2 py-0" style="font-size: 12px;">
+                All Categories
+            </a>
+            {% for cat_val, cat_label in categories %}
+                <a href="{% url 'social:video_feed' %}?category={{ cat_val }}{% if tab %}&tab={{ tab }}{% endif %}" class="btn btn-sm {% if selected_category == cat_val %}btn-secondary text-white{% else %}btn-light border text-muted{% endif %} rounded-pill px-2 py-0" style="font-size: 12px;">
+                    {{ cat_label }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Video Grid -->
+    {% if videos %}
+        <div class="row g-3 g-md-4">
+            {% for video in videos %}
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                    <div class="cb-card h-100 overflow-hidden d-flex flex-column border shadow-sm" style="border-radius: 12px;">
+                        <!-- Thumbnail / Video Link -->
+                        <a href="{% url 'social:video_detail' video_id=video.id %}" class="position-relative d-block bg-black" style="aspect-ratio: 16/9; overflow: hidden;">
+                            <img src="{{ video.get_thumbnail_url }}" class="w-100 h-100 object-fit-cover opacity-90 transition-all hover-scale" alt="{{ video.title }}">
+                            <div class="position-absolute bottom-0 end-0 m-2 badge bg-black bg-opacity-75 text-white py-1 px-2" style="font-size: 11px;">
+                                <i class="bi bi-play-circle-fill me-1 text-danger"></i>Watch
+                            </div>
+                            <div class="position-absolute top-0 start-0 m-2 badge bg-dark bg-opacity-75 text-white text-capitalize" style="font-size: 10px;">
+                                {{ video.get_category_display }}
+                            </div>
+                        </a>
+
+                        <!-- Card Body -->
+                        <div class="p-3 d-flex flex-column flex-grow-1">
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'accounts:profile' username=video.author.username %}">
+                                    <img src="{{ video.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="{{ video.author.username }}">
+                                </a>
+                                <div class="overflow-hidden flex-grow-1">
+                                    <h6 class="fw-bold mb-1 text-truncate">
+                                        <a href="{% url 'social:video_detail' video_id=video.id %}" class="text-reset text-decoration-none" title="{{ video.title }}">
+                                            {{ video.title }}
+                                        </a>
+                                    </h6>
+                                    <div class="small text-muted text-truncate">
+                                        <a href="{% url 'accounts:profile' username=video.author.username %}" class="text-reset text-decoration-none">
+                                            {{ video.author.get_display_name }}
+                                        </a>
+                                    </div>
+                                    <div class="text-muted small mt-1" style="font-size: 11px;">
+                                        <span><i class="bi bi-eye me-1"></i>{{ video.views_count }} views</span> &bull;
+                                        <span>{{ video.created_at|timesince }} ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="cb-card text-center p-5 text-muted my-4">
+            <i class="bi bi-camera-reels text-danger fs-1 mb-2"></i>
+            <h4 class="fw-bold">No Videos Found</h4>
+            <p class="small text-muted">There are currently no videos matching your search or filter. Be the first to share an engaging video with your network!</p>
+            <a href="{% url 'social:upload_video' %}" class="btn btn-danger btn-sm rounded-pill px-4 py-2 mt-2">
+                <i class="bi bi-cloud-arrow-up-fill me-1"></i> Upload a Video Now
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

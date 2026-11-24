@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Events | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-calendar-event-fill text-danger me-2"></i>Events</h3>
+            <p class="text-muted small mb-0">Discover local happenings, meetups, parties, and online conferences.</p>
+        </div>
+        <div>
+            <a href="{% url 'events_app:create_event' %}" class="btn btn-cb-primary fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i>Create New Event
+            </a>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="cb-card p-3 mb-4">
+        <form method="GET" class="row g-2 align-items-center">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            <div class="col-md-9">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--cb-border);"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Search events by title, description, or venue..." style="border-color: var(--cb-border);">
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-cb-secondary flex-grow-1">Search</button>
+                {% if query %}
+                    <a href="{% url 'events_app:event_list' %}?tab={{ tab }}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'upcoming' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'events_app:event_list' %}?tab=upcoming">
+                <i class="bi bi-calendar-week me-1"></i>Upcoming Events
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'attending' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'events_app:event_list' %}?tab=attending">
+                <i class="bi bi-check2-circle me-1"></i>Going / Interested ({{ attending_count }})
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'my_events' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'events_app:event_list' %}?tab=my_events">
+                <i class="bi bi-person-badge me-1"></i>Your Events ({{ my_events_count }})
+            </a>
+        </li>
+    </ul>
+
+    <!-- Events Grid -->
+    <div class="row g-4">
+        {% for e in events %}
+            <div class="col-md-6 col-lg-4">
+                <div class="cb-card h-100 d-flex flex-column overflow-hidden">
+                    <div style="height: 140px; background-image: url('{{ e.get_cover_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                        <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">{{ e.get_privacy_display }}</span>
+                    </div>
+                    <div class="p-3 flex-grow-1 d-flex flex-column">
+                        <div class="text-danger small fw-bold text-uppercase mb-1">
+                            <i class="bi bi-calendar-check me-1"></i>{{ e.start_time|date:"D, M d • h:i A" }}
+                        </div>
+                        <h5 class="fw-bold mb-1">
+                            <a href="{% url 'events_app:event_detail' pk=e.pk %}" class="text-decoration-none" style="color: var(--cb-text);">
+                                {{ e.title }}
+                            </a>
+                        </h5>
+                        <div class="text-muted small mb-2"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ e.venue }}</div>
+                        <div class="text-muted small mb-3">
+                            <span><i class="bi bi-people me-1"></i>{{ e.going_count }} going &bull; {{ e.interested_count }} interested</span>
+                        </div>
+                        {% if e.description %}
+                            <p class="small text-muted mb-3 flex-grow-1">{{ e.description|truncatechars:100 }}</p>
+                        {% endif %}
+
+                        <div class="d-flex gap-2 mt-auto">
+                            <a href="{% url 'events_app:event_detail' pk=e.pk %}" class="btn btn-sm btn-cb-primary flex-grow-1">
+                                View Event
+                            </a>
+                            <form action="{% url 'events_app:event_rsvp' pk=e.pk %}" method="POST" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="going">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-star"></i> Interested
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-calendar-x text-muted fs-1 d-block mb-3"></i>
+                <h5 class="text-muted">No events found in this category.</h5>
+                <a href="{% url 'events_app:create_event' %}" class="btn btn-cb-primary mt-2">Host an event</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

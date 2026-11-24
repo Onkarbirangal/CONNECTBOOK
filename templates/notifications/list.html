@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Notifications | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <div class="cb-card p-4">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-3">
+            <h4 class="fw-bold mb-0">Notifications</h4>
+            <a href="{% url 'notifications:mark_all_read' %}" class="btn btn-sm btn-cb-secondary">
+                <i class="bi bi-check-all me-1"></i> Mark All as Read
+            </a>
+        </div>
+
+        <!-- Notification Category Filters -->
+        <div class="cb-feed-tabs mb-3 p-0">
+            <a href="{% url 'notifications:list' %}" class="btn btn-sm {% if selected_cat == 'all' or not selected_cat %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-3">
+                All
+            </a>
+            <a href="{% url 'notifications:list' %}?category=social" class="btn btn-sm {% if selected_cat == 'social' %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-3">
+                Social
+            </a>
+            <a href="{% url 'notifications:list' %}?category=messages" class="btn btn-sm {% if selected_cat == 'messages' %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-3">
+                Messages
+            </a>
+            <a href="{% url 'notifications:list' %}?category=groups" class="btn btn-sm {% if selected_cat == 'groups' %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-3">
+                Groups & Events
+            </a>
+            <a href="{% url 'notifications:list' %}?category=general" class="btn btn-sm {% if selected_cat == 'general' %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-3">
+                General
+            </a>
+        </div>
+
+        {% if notifications %}
+            <div class="list-group list-group-flush">
+                {% for n in notifications %}
+                    <a href="{% if n.target_url %}{{ n.target_url }}{% else %}#{% endif %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3 rounded mb-2 border-0 {% if not n.is_read %}bg-body-secondary{% endif %}" style="background: var(--cb-bg);">
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ n.actor.profile.get_avatar_url }}" class="cb-avatar" alt="">
+                            <div>
+                                <div class="fw-bold">{{ n.title }}</div>
+                                <div class="text-muted small">{{ n.message }}</div>
+                                <div class="text-primary mt-1" style="font-size: 11px;">{{ n.created_at|timesince }} ago</div>
+                            </div>
+                        </div>
+                        <form action="{% url 'notifications:delete' notif_id=n.id %}" method="POST" class="m-0" onclick="event.stopPropagation();">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm text-danger border-0 bg-transparent" title="Delete notification">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-bell-slash fs-1 mb-2"></i>
+                <h5>No Notifications</h5>
+                <p class="small">You're all caught up! When friends interact with your content, you'll see updates here.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% load static %}
+<div class="cb-sidebar-left">
+    <a href="{% url 'accounts:profile' username=user.username %}" class="cb-sidebar-item">
+        <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+        <span>{{ user.get_display_name }}</span>
+    </a>
+    <a href="{% url 'friends:list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-primary"><i class="bi bi-people-fill"></i></div>
+        <span>Friends</span>
+    </a>
+    <a href="{% url 'social:memories' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-warning"><i class="bi bi-clock-history"></i></div>
+        <span>Memories</span>
+    </a>
+    <a href="{% url 'social:saved_posts' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-purple" style="color: #9333EA;"><i class="bi bi-bookmark-fill"></i></div>
+        <span>Saved Posts</span>
+    </a>
+    <a href="{% url 'social:my_posts' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-primary"><i class="bi bi-collection-play-fill"></i></div>
+        <span>Manage My Posts</span>
+    </a>
+    <a href="{% url 'groups_app:list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-info"><i class="bi bi-collection-fill"></i></div>
+        <span>Groups</span>
+    </a>
+    <a href="{% url 'pages_app:page_list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-primary"><i class="bi bi-flag-fill"></i></div>
+        <span>Pages</span>
+    </a>
+    <a href="{% url 'events_app:event_list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-danger"><i class="bi bi-calendar-event-fill"></i></div>
+        <span>Events</span>
+    </a>
+    <a href="{% url 'marketplace:listing_list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-success"><i class="bi bi-shop"></i></div>
+        <span>Marketplace</span>
+    </a>
+    <a href="{% url 'streaming:stream_list' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-danger"><i class="bi bi-broadcast"></i></div>
+        <span>Live Studio</span>
+    </a>
+    <a href="{% url 'social:video_feed' %}" class="cb-sidebar-item {% if active_nav == 'videos' %}active{% endif %}">
+        <div class="cb-sidebar-icon text-danger"><i class="bi bi-play-btn-fill"></i></div>
+        <span>Watch & Videos</span>
+    </a>
+    <a href="{% url 'social:reels' %}" class="cb-sidebar-item {% if active_nav == 'reels' %}active{% endif %}">
+        <div class="cb-sidebar-icon text-danger"><i class="bi bi-camera-reels-fill"></i></div>
+        <span>Reels</span>
+    </a>
+    <a href="{% url 'chat:inbox' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-primary"><i class="bi bi-chat-dots-fill"></i></div>
+        <span>Messenger</span>
+    </a>
+    <a href="{% url 'accounts:settings' %}" class="cb-sidebar-item">
+        <div class="cb-sidebar-icon text-secondary"><i class="bi bi-gear-fill"></i></div>
+        <span>Settings</span>
+    </a>
+
+    {% if user.is_staff %}
+    <div class="border-top my-2 pt-2">
+        <span class="small text-muted fw-bold px-3 text-uppercase">Administration</span>
+        <a href="{% url 'admin_dashboard:overview' %}" class="cb-sidebar-item text-primary fw-bold">
+            <div class="cb-sidebar-icon text-primary"><i class="bi bi-speedometer2"></i></div>
+            <span>Admin Dashboard</span>
+        </a>
+        <a href="{% url 'admin_dashboard:moderation' %}" class="cb-sidebar-item">
+            <div class="cb-sidebar-icon text-danger"><i class="bi bi-flag-fill"></i></div>
+            <span>Moderation Queue</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="p-3 text-muted" style="font-size: 12px;">
+        ConnectBook &copy; 2026<br>
+        Connect with Friends. Share Your World.
+    </div>
+</div>

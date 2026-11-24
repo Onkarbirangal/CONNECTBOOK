@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Story | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 680px;">
+    <div class="cb-card p-4 shadow-sm border" style="border-radius: 12px; background: var(--cb-card);">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4" style="border-color: var(--cb-border) !important;">
+            <div>
+                <h4 class="fw-bold mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Create a Story</h4>
+                <div class="text-muted small">Disappears automatically after 24 hours.</div>
+            </div>
+            <a href="{% url 'social:feed' %}" class="btn btn-sm btn-outline-secondary rounded-pill">Cancel</a>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Story Type Buttons -->
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-uppercase text-muted">Story Format</label>
+                <div class="btn-group w-100" role="group">
+                    <input type="radio" class="btn-check" name="media_type" id="type_photo" value="image" checked onclick="toggleStoryFields('photo');">
+                    <label class="btn btn-outline-primary fw-semibold" for="type_photo"><i class="bi bi-image me-1"></i> Photo</label>
+
+                    <input type="radio" class="btn-check" name="media_type" id="type_video" value="video" onclick="toggleStoryFields('video');">
+                    <label class="btn btn-outline-primary fw-semibold" for="type_video"><i class="bi bi-camera-video me-1"></i> Video</label>
+
+                    <input type="radio" class="btn-check" name="media_type" id="type_text" value="text" onclick="toggleStoryFields('text');">
+                    <label class="btn btn-outline-primary fw-semibold" for="type_text"><i class="bi bi-fonts me-1"></i> Text Story</label>
+                </div>
+            </div>
+
+            <!-- Media Upload Section -->
+            <div class="mb-3" id="storyMediaSection">
+                <label class="form-label fw-bold small text-uppercase text-muted">Select Image or Video</label>
+                <input type="file" name="media_file" id="storyMediaFile" class="form-control" accept="image/*,video/*" onchange="previewStoryMedia(this)">
+                <div id="storyMediaPreview" class="mt-3 text-center rounded overflow-hidden" style="display: none; max-height: 320px; background: #000;"></div>
+            </div>
+
+            <!-- Text Story Section -->
+            <div class="mb-3 d-none" id="storyTextSection">
+                <label class="form-label fw-bold small text-uppercase text-muted">Your Story Message</label>
+                <textarea name="text_content" id="storyTextInput" class="form-control mb-3" rows="3" placeholder="What's happening? Type your story text..." oninput="updateTextStoryPreview()"></textarea>
+
+                <label class="form-label fw-bold small text-uppercase text-muted">Background Gradient</label>
+                <select name="background_color" id="storyBgSelect" class="form-select mb-3" onchange="updateTextStoryPreview()">
+                    <option value="linear-gradient(135deg, #1877F2 0%, #00C6FF 100%)">Blue Ocean</option>
+                    <option value="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">Deep Royal Purple</option>
+                    <option value="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">Sunset Pink</option>
+                    <option value="linear-gradient(135deg, #0ba360 0%, #3cba92 100%)">Emerald Mint</option>
+                    <option value="linear-gradient(135deg, #fa709a 0%, #fee140 100%)">Fire Glow</option>
+                    <option value="linear-gradient(135deg, #232526 0%, #414345 100%)">Dark Midnight</option>
+                </select>
+
+                <!-- Live Text Story Preview Box -->
+                <div class="rounded p-4 text-center text-white fw-bold fs-4 d-flex align-items-center justify-content-center shadow-sm" id="liveTextStoryPreview" style="min-height: 220px; background: linear-gradient(135deg, #1877F2 0%, #00C6FF 100%); word-break: break-word;">
+                    Your text appears here...
+                </div>
+            </div>
+
+            <!-- Additional Controls -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Audience</label>
+                    <select name="privacy" class="form-select form-select-sm">
+                        <option value="friends" selected>Friends Only</option>
+                        <option value="public">Public</option>
+                        <option value="private">Only Me</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-uppercase text-muted">Location Check-In</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-geo-alt-fill text-danger"></i></span>
+                        <input type="text" name="location" class="form-control" placeholder="Add location tag...">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-uppercase text-muted">Tag Friends</label>
+                <select name="tagged_friends" multiple class="form-select form-select-sm" size="3">
+                    {% for f in friends %}
+                        <option value="{{ f.id }}">{{ f.get_display_name }} (@{{ f.username }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: var(--cb-border) !important;">
+                <a href="{% url 'social:feed' %}" class="btn btn-outline-secondary rounded-pill px-3">Cancel</a>
+                <button type="submit" class="btn btn-cb-primary rounded-pill px-4 fw-semibold shadow-sm">
+                    <i class="bi bi-send-fill me-1"></i> Share to Story
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleStoryFields(type) {
+    const mediaSec = document.getElementById('storyMediaSection');
+    const textSec = document.getElementById('storyTextSection');
+    if (type === 'text') {
+        mediaSec.classList.add('d-none');
+        textSec.classList.remove('d-none');
+    } else {
+        mediaSec.classList.remove('d-none');
+        textSec.classList.add('d-none');
+        const mediaInput = document.getElementById('storyMediaFile');
+        if (type === 'photo') {
+            mediaInput.accept = "image/*";
+        } else {
+            mediaInput.accept = "video/*";
+        }
+    }
+}
+
+function updateTextStoryPreview() {
+    const text = document.getElementById('storyTextInput').value.trim();
+    const bg = document.getElementById('storyBgSelect').value;
+    const preview = document.getElementById('liveTextStoryPreview');
+    preview.style.background = bg;
+    preview.textContent = text || 'Your text appears here...';
+}
+
+function previewStoryMedia(input) {
+    const previewBox = document.getElementById('storyMediaPreview');
+    previewBox.innerHTML = '';
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (file.type.startsWith('video/')) {
+                previewBox.innerHTML = `<video src="${e.target.result}" controls autoplay muted style="max-height: 280px; width: 100%; object-fit: contain;"></video>`;
+            } else {
+                previewBox.innerHTML = `<img src="${e.target.result}" style="max-height: 280px; width: 100%; object-fit: contain;" alt="preview">`;
+            }
+            previewBox.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewBox.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

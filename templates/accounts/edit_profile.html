@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Profile | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="cb-card p-4">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4">
+            <h3 class="fw-bold mb-0">Edit Profile</h3>
+            <a href="{% url 'accounts:profile' username=user.username %}" class="btn btn-cb-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Profile
+            </a>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <h5 class="fw-bold text-primary mb-3">Profile Photos</h5>
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Profile Picture</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar cb-avatar-lg" alt="">
+                        <div>
+                            {{ profile_form.avatar }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Cover Photo</label>
+                    <div>
+                        {{ profile_form.cover_photo }}
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-primary mb-3">Basic Information</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">First Name</label>
+                    {{ user_form.first_name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Last Name</label>
+                    {{ user_form.last_name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    {{ user_form.email }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Date of Birth</label>
+                    {{ user_form.date_of_birth }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Bio</label>
+                    {{ profile_form.bio }}
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-primary mb-3">Work & Education</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Workplace</label>
+                    {{ profile_form.work }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Education / University</label>
+                    {{ profile_form.education }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Current City</label>
+                    {{ profile_form.city }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Hometown</label>
+                    {{ profile_form.hometown }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Website</label>
+                    {{ profile_form.website }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Relationship Status</label>
+                    {{ profile_form.relationship_status }}
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-primary mb-3">Privacy & Visibility</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Who can see your profile?</label>
+                    {{ profile_form.profile_visibility }}
+                </div>
+                <div class="col-12">
+                    <div class="form-check mb-2">
+                        {{ profile_form.show_email }}
+                        <label class="form-check-label" for="{{ profile_form.show_email.id_for_label }}">Show email publicly on profile</label>
+                    </div>
+                    <div class="form-check">
+                        {{ profile_form.show_dob }}
+                        <label class="form-check-label" for="{{ profile_form.show_dob.id_for_label }}">Show birthday publicly on profile</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-cb-primary px-5 py-2 fw-bold">
+                Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

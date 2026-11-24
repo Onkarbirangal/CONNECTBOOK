@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}Search Results for "{{ query }}" | ConnectBook{% endblock %}
+{% block content %}
+<div class="container py-3 py-md-4 px-2 px-md-3" style="max-width: 850px;">
+    <h4 class="fw-bold mb-4">Search Results for "<span class="text-primary">{{ query }}</span>"</h4>
+
+    <!-- People -->
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-people-fill text-primary me-2"></i>People</h5>
+        {% if users %}
+            <div class="row g-3">
+                {% for u in users %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                            <a href="{% url 'accounts:profile' username=u.username %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                                <img src="{{ u.profile.get_avatar_url }}" class="cb-avatar" alt="">
+                                <div>
+                                    <div class="fw-bold">{{ u.get_display_name }}</div>
+                                    <div class="text-muted small">@{{ u.username }}</div>
+                                </div>
+                            </a>
+                            <a href="{% url 'accounts:profile' username=u.username %}" class="btn btn-sm btn-cb-primary">View</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">No people found matching "{{ query }}".</p>
+        {% endif %}
+    </div>
+
+    <!-- Videos -->
+    {% if videos %}
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-play-btn-fill text-danger me-2"></i>Videos</h5>
+        <div class="row g-3">
+            {% for v in videos %}
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ v.get_thumbnail_url }}" class="rounded" style="width: 48px; height: 48px; object-fit: cover;" alt="">
+                            <div>
+                                <a href="{% url 'social:video_detail' video_id=v.id %}" class="fw-bold text-decoration-none text-reset d-block text-truncate" style="max-width: 200px;">
+                                    {{ v.title }}
+                                </a>
+                                <div class="text-muted small">by {{ v.author.get_display_name }} &bull; {{ v.views_count }} views</div>
+                            </div>
+                        </div>
+                        <a href="{% url 'social:video_detail' video_id=v.id %}" class="btn btn-sm btn-outline-danger">Watch</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Reels -->
+    {% if reels %}
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-camera-reels-fill text-danger me-2"></i>Reels</h5>
+        <div class="row g-3">
+            {% for r in reels %}
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ r.get_thumbnail_url }}" class="rounded" style="width: 40px; height: 55px; object-fit: cover;" alt="">
+                            <div>
+                                <a href="{% url 'social:reel_detail' reel_id=r.id %}" class="fw-bold text-decoration-none text-reset d-block text-truncate" style="max-width: 200px;">
+                                    {{ r.caption|default:"Reel" }}
+                                </a>
+                                <div class="text-muted small">by @{{ r.author.username }} &bull; {{ r.views_count }} views</div>
+                            </div>
+                        </div>
+                        <a href="{% url 'social:reel_detail' reel_id=r.id %}" class="btn btn-sm btn-outline-danger">Play</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pages -->
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-flag-fill text-primary me-2"></i>Pages</h5>
+        {% if pages %}
+            <div class="row g-3">
+                {% for p in pages %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                            <a href="{% url 'pages_app:page_detail' slug=p.slug %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                                <img src="{{ p.get_avatar_url }}" class="cb-avatar" alt="">
+                                <div>
+                                    <div class="fw-bold">{{ p.name }}</div>
+                                    <div class="text-muted small">{{ p.get_category_display }} &bull; {{ p.total_followers }} followers</div>
+                                </div>
+                            </a>
+                            <a href="{% url 'pages_app:page_detail' slug=p.slug %}" class="btn btn-sm btn-cb-primary">View</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">No pages found matching "{{ query }}".</p>
+        {% endif %}
+    </div>
+
+    <!-- Groups -->
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-collection-fill text-info me-2"></i>Groups</h5>
+        {% if groups %}
+            <div class="row g-3">
+                {% for g in groups %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                            <a href="{% url 'groups_app:detail' slug=g.slug %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                                <img src="{{ g.get_cover_url }}" class="cb-avatar rounded-circle" alt="">
+                                <div>
+                                    <div class="fw-bold">{{ g.name }}</div>
+                                    <div class="text-muted small">{{ g.memberships.count }} members</div>
+                                </div>
+                            </a>
+                            <a href="{% url 'groups_app:detail' slug=g.slug %}" class="btn btn-sm btn-cb-primary">Visit</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">No groups found matching "{{ query }}".</p>
+        {% endif %}
+    </div>
+
+    <!-- Events -->
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-calendar-event-fill text-danger me-2"></i>Events</h5>
+        {% if events %}
+            <div class="row g-3">
+                {% for e in events %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                            <div>
+                                <a href="{% url 'events_app:event_detail' pk=e.pk %}" class="fw-bold text-decoration-none text-reset d-block">
+                                    {{ e.title }}
+                                </a>
+                                <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ e.venue }} &bull; {{ e.start_time|date:"M d, H:i" }}</div>
+                            </div>
+                            <a href="{% url 'events_app:event_detail' pk=e.pk %}" class="btn btn-sm btn-outline-danger">Details</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">No events found matching "{{ query }}".</p>
+        {% endif %}
+    </div>
+
+    <!-- Marketplace Listings -->
+    <div class="cb-card p-3 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-shop text-success me-2"></i>Marketplace Items</h5>
+        {% if listings %}
+            <div class="row g-3">
+                {% for item in listings %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="{{ item.get_image_url }}" class="rounded" style="width: 44px; height: 44px; object-fit: cover;" alt="">
+                                <div>
+                                    <a href="{% url 'marketplace:listing_detail' pk=item.pk %}" class="fw-bold text-decoration-none text-reset d-block">
+                                        {{ item.title }}
+                                    </a>
+                                    <div class="text-success fw-bold small">${{ item.price|floatformat:2 }} &bull; {{ item.location }}</div>
+                                </div>
+                            </div>
+                            <a href="{% url 'marketplace:listing_detail' pk=item.pk %}" class="btn btn-sm btn-outline-success">View</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">No marketplace listings found matching "{{ query }}".</p>
+        {% endif %}
+    </div>
+
+    <!-- Posts -->
+    <h5 class="fw-bold mb-3"><i class="bi bi-file-text-fill text-success me-2"></i>Posts</h5>
+    {% if posts %}
+        {% for post in posts %}
+            {% include 'includes/post_card.html' with post=post %}
+        {% endfor %}
+    {% else %}
+        <div class="cb-card text-center p-4 text-muted small">
+            No posts found matching "{{ query }}".
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

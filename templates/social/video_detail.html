@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ video.title }} | ConnectBook Watch{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-2 px-md-4" style="max-width: 1400px;">
+    <div class="row g-4">
+        <!-- Main Video & Details Column -->
+        <div class="col-lg-8 col-xl-8">
+            <!-- Custom Video Player Container -->
+            <div class="cb-video-player-container position-relative bg-black rounded overflow-hidden shadow-lg mb-3" id="cbVideoContainer" style="aspect-ratio: 16/9; width: 100%;">
+                <video id="cbMainVideo" class="w-100 h-100" poster="{{ video.get_thumbnail_url }}" preload="metadata" playsinline>
+                    <source src="{{ video.video_file.url }}" type="video/mp4">
+                    Your browser does not support HTML5 video playback.
+                </video>
+
+                <!-- Center Big Play/Pause Overlay -->
+                <div class="position-absolute top-50 start-50 translate-middle" id="cbCenterPlayBtn" style="cursor: pointer; z-index: 5;">
+                    <div class="rounded-circle bg-dark bg-opacity-75 text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 68px; height: 68px;">
+                        <i class="bi bi-play-fill fs-1" id="cbCenterPlayIcon"></i>
+                    </div>
+                </div>
+
+                <!-- Custom Bottom Control Bar -->
+                <div class="cb-player-controls position-absolute bottom-0 start-0 end-0 p-2 p-md-3" id="cbPlayerControls" style="z-index: 10; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 100%);">
+                    <!-- Progress Bar Scrubber -->
+                    <div class="progress mb-2" id="cbProgressBar" style="height: 6px; cursor: pointer; background: rgba(255,255,255,0.3);">
+                        <div class="progress-bar bg-danger" id="cbProgressFill" role="progressbar" style="width: 0%;"></div>
+                    </div>
+
+                    <!-- Bottom Controls Buttons -->
+                    <div class="d-flex align-items-center justify-content-between text-white">
+                        <div class="d-flex align-items-center gap-3">
+                            <!-- Play / Pause -->
+                            <button type="button" class="btn btn-sm text-white p-0 border-0" id="cbPlayPauseBtn" title="Play/Pause">
+                                <i class="bi bi-play-fill fs-4" id="cbPlayIcon"></i>
+                            </button>
+
+                            <!-- Volume Control -->
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm text-white p-0 border-0" id="cbMuteBtn" title="Mute/Unmute">
+                                    <i class="bi bi-volume-up-fill fs-5" id="cbVolumeIcon"></i>
+                                </button>
+                                <input type="range" class="form-range d-none d-sm-inline-block" id="cbVolumeSlider" min="0" max="1" step="0.05" value="1" style="width: 70px; height: 4px;">
+                            </div>
+
+                            <!-- Duration Display -->
+                            <span class="small font-monospace" id="cbTimeDisplay" style="font-size: 12px;">00:00 / 00:00</span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Speed Selector -->
+                            <div class="dropdown">
+                                <button class="btn btn-sm text-white py-0 px-2 border border-secondary rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" id="cbSpeedBtn" style="font-size: 11px;">
+                                    1x
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow" style="font-size: 12px; min-width: 90px;">
+                                    <li><a class="dropdown-item cb-speed-opt" href="#" data-speed="0.5">0.5x</a></li>
+                                    <li><a class="dropdown-item cb-speed-opt" href="#" data-speed="0.75">0.75x</a></li>
+                                    <li><a class="dropdown-item cb-speed-opt active" href="#" data-speed="1">1x (Normal)</a></li>
+                                    <li><a class="dropdown-item cb-speed-opt" href="#" data-speed="1.25">1.25x</a></li>
+                                    <li><a class="dropdown-item cb-speed-opt" href="#" data-speed="1.5">1.5x</a></li>
+                                    <li><a class="dropdown-item cb-speed-opt" href="#" data-speed="2">2x</a></li>
+                                </ul>
+                            </div>
+
+                            <!-- Fullscreen -->
+                            <button type="button" class="btn btn-sm text-white p-0 border-0" id="cbFullscreenBtn" title="Fullscreen">
+                                <i class="bi bi-fullscreen fs-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Title & Metadata -->
+            <div class="cb-card p-3 p-md-4 mb-3">
+                <h4 class="fw-bold mb-2">{{ video.title }}</h4>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-3 border-bottom">
+                    <div class="text-muted small">
+                        <span><i class="bi bi-eye me-1"></i>{{ video.views_count }} views</span> &bull;
+                        <span>{{ video.created_at|date:"M d, Y" }}</span> &bull;
+                        <span class="badge bg-secondary-subtle text-secondary">{{ video.get_category_display }}</span>
+                    </div>
+
+                    <!-- Video Actions -->
+                    <div class="d-flex align-items-center gap-2">
+                        <form action="{% url 'social:react_video' video_id=video.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if has_reacted %}btn-primary text-white{% else %}btn-light text-muted border{% endif %} rounded-pill px-3">
+                                <i class="bi bi-hand-thumbs-up-fill me-1"></i> Like <span class="badge bg-white text-dark ms-1">{{ video.likes_count }}</span>
+                            </button>
+                        </form>
+                        <form action="{% url 'social:toggle_save_video' video_id=video.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if is_saved %}btn-warning text-dark{% else %}btn-light text-muted border{% endif %} rounded-pill px-3">
+                                <i class="bi bi-bookmark-fill me-1"></i> {% if is_saved %}Saved{% else %}Save{% endif %}
+                            </button>
+                        </form>
+                        <a href="{% url 'social:report_content' target_type='video' target_id=video.id %}" class="btn btn-sm btn-light border text-danger rounded-pill px-2" title="Report Video">
+                            <i class="bi bi-flag"></i>
+                        </a>
+                        {% if video.author == user or user.is_staff %}
+                            <a href="{% url 'social:edit_video' video_id=video.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="Edit Video">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Creator Bar -->
+                <div class="d-flex align-items-center justify-content-between pt-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <a href="{% url 'accounts:profile' username=video.author.username %}">
+                            <img src="{{ video.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-md" alt="{{ video.author.username }}">
+                        </a>
+                        <div>
+                            <a href="{% url 'accounts:profile' username=video.author.username %}" class="fw-bold text-reset text-decoration-none">
+                                {{ video.author.get_display_name }}
+                            </a>
+                            <div class="text-muted small">@{{ video.author.username }}</div>
+                        </div>
+                    </div>
+                    {% if video.author != user %}
+                        <a href="{% url 'accounts:toggle_follow' username=video.author.username %}" class="btn btn-sm btn-cb-primary rounded-pill px-3">
+                            <i class="bi bi-person-plus-fill me-1"></i> Follow
+                        </a>
+                    {% endif %}
+                </div>
+
+                <!-- Description Box -->
+                {% if video.description %}
+                    <div class="mt-3 p-3 rounded bg-light dark-bg-secondary small">
+                        {{ video.description|linebreaksbr }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Video Comments Section -->
+            <div class="cb-card p-3 p-md-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-chat-text me-2 text-primary"></i>Comments ({{ video.comments_count }})</h5>
+                
+                <!-- Comment Input Box -->
+                <form action="{% url 'social:add_video_comment' video_id=video.id %}" method="POST" class="d-flex gap-2 mb-4">
+                    {% csrf_token %}
+                    <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                    <input type="text" name="content" class="form-control rounded-pill" placeholder="Add a public comment..." required autocomplete="off">
+                    <button type="submit" class="btn btn-cb-primary rounded-pill px-3">Post</button>
+                </form>
+
+                <!-- Comments List -->
+                {% if comments %}
+                    <div class="vstack gap-3">
+                        {% for c in comments %}
+                            <div class="d-flex gap-2" id="comment-{{ c.id }}">
+                                <a href="{% url 'accounts:profile' username=c.author.username %}">
+                                    <img src="{{ c.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                </a>
+                                <div class="flex-grow-1">
+                                    <div class="cb-comment-bubble">
+                                        <a href="{% url 'accounts:profile' username=c.author.username %}" class="cb-comment-author text-decoration-none">
+                                            {{ c.author.get_display_name }}
+                                        </a>
+                                        <div class="cb-comment-text">{{ c.content }}</div>
+                                    </div>
+                                    <div class="cb-comment-actions">
+                                        <span>{{ c.created_at|timesince }} ago</span>
+                                    </div>
+
+                                    <!-- Replies -->
+                                    {% if c.replies.all %}
+                                        <div class="mt-2 ps-3 border-start">
+                                            {% for r in c.replies.all %}
+                                                <div class="d-flex gap-2 mb-2">
+                                                    <img src="{{ r.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" style="width: 28px; height: 28px;" alt="">
+                                                    <div>
+                                                        <div class="cb-comment-bubble py-1 px-3">
+                                                            <strong class="small">{{ r.author.get_display_name }}</strong>
+                                                            <div class="small">{{ r.content }}</div>
+                                                        </div>
+                                                        <span class="text-muted" style="font-size: 10px;">{{ r.created_at|timesince }} ago</span>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted p-4 small">
+                        No comments yet. Be the first to share your thoughts on this video!
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Related Videos Sidebar -->
+        <div class="col-lg-4 col-xl-4">
+            <div class="cb-card p-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-collection-play me-2 text-danger"></i>Related Videos</h6>
+                {% if related_videos %}
+                    <div class="vstack gap-3">
+                        {% for r_vid in related_videos %}
+                            <a href="{% url 'social:video_detail' video_id=r_vid.id %}" class="d-flex gap-2 text-reset text-decoration-none p-1 rounded hover-bg">
+                                <div class="position-relative bg-black rounded overflow-hidden flex-shrink-0" style="width: 120px; aspect-ratio: 16/9;">
+                                    <img src="{{ r_vid.get_thumbnail_url }}" class="w-100 h-100 object-fit-cover" alt="">
+                                </div>
+                                <div class="overflow-hidden flex-grow-1">
+                                    <div class="fw-semibold small text-truncate">{{ r_vid.title }}</div>
+                                    <div class="text-muted small" style="font-size: 11px;">{{ r_vid.author.get_display_name }}</div>
+                                    <div class="text-muted small" style="font-size: 10px;">{{ r_vid.views_count }} views</div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-muted small p-3 text-center">No related videos in this category yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Video Player JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('cbMainVideo');
+    const container = document.getElementById('cbVideoContainer');
+    const centerBtn = document.getElementById('cbCenterPlayBtn');
+    const playPauseBtn = document.getElementById('cbPlayPauseBtn');
+    const playIcon = document.getElementById('cbPlayIcon');
+    const centerIcon = document.getElementById('cbCenterPlayIcon');
+    const progressBar = document.getElementById('cbProgressBar');
+    const progressFill = document.getElementById('cbProgressFill');
+    const timeDisplay = document.getElementById('cbTimeDisplay');
+    const muteBtn = document.getElementById('cbMuteBtn');
+    const volumeIcon = document.getElementById('cbVolumeIcon');
+    const volumeSlider = document.getElementById('cbVolumeSlider');
+    const fullscreenBtn = document.getElementById('cbFullscreenBtn');
+    const speedOptions = document.querySelectorAll('.cb-speed-opt');
+    const speedBtn = document.getElementById('cbSpeedBtn');
+
+    if (!video) return;
+
+    function togglePlay() {
+        if (video.paused || video.ended) {
+            video.play();
+            playIcon.className = 'bi bi-pause-fill fs-4';
+            centerIcon.className = 'bi bi-pause-fill fs-1';
+            centerBtn.style.opacity = '0';
+        } else {
+            video.pause();
+            playIcon.className = 'bi bi-play-fill fs-4';
+            centerIcon.className = 'bi bi-play-fill fs-1';
+            centerBtn.style.opacity = '1';
+        }
+    }
+
+    centerBtn.addEventListener('click', togglePlay);
+    playPauseBtn.addEventListener('click', togglePlay);
+    video.addEventListener('click', togglePlay);
+
+    // Update progress
+    video.addEventListener('timeupdate', () => {
+        if (video.duration) {
+            const percent = (video.currentTime / video.duration) * 100;
+            progressFill.style.width = percent + '%';
+            timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+        }
+    });
+
+    // Scrubber click seek
+    progressBar.addEventListener('click', (e) => {
+        const rect = progressBar.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        if (video.duration) {
+            video.currentTime = pos * video.duration;
+        }
+    });
+
+    // Volume & Mute
+    muteBtn.addEventListener('click', () => {
+        video.muted = !video.muted;
+        volumeIcon.className = video.muted ? 'bi bi-volume-mute-fill fs-5 text-danger' : 'bi bi-volume-up-fill fs-5';
+    });
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            video.volume = e.target.value;
+            video.muted = (video.volume === 0);
+            volumeIcon.className = video.muted ? 'bi bi-volume-mute-fill fs-5 text-danger' : 'bi bi-volume-up-fill fs-5';
+        });
+    }
+
+    // Playback Speed
+    speedOptions.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+            e.preventDefault();
+            const speed = parseFloat(opt.getAttribute('data-speed'));
+            video.playbackRate = speed;
+            speedBtn.textContent = speed + 'x';
+            speedOptions.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+        });
+    });
+
+    // Fullscreen
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            if (container.requestFullscreen) container.requestFullscreen();
+            else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+    });
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+});
+</script>
+{% endblock %}

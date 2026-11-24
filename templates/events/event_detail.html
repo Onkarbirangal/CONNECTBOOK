@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ event.title }} | ConnectBook Events{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <!-- Event Banner Card -->
+    <div class="cb-card mb-4 overflow-hidden">
+        <div style="height: 250px; background-image: url('{{ event.get_cover_url }}'); background-size: cover; background-position: center;" class="position-relative">
+            <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-3 fs-6">{{ event.get_privacy_display }}</span>
+        </div>
+
+        <div class="p-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 border-bottom pb-3">
+                <div>
+                    <div class="text-danger fw-bold small text-uppercase mb-1">
+                        <i class="bi bi-calendar-event me-1"></i>{{ event.start_time|date:"l, F d, Y • h:i A" }}
+                        {% if event.end_time %} - {{ event.end_time|date:"h:i A" }}{% endif %}
+                    </div>
+                    <h2 class="fw-bold mb-1">{{ event.title }}</h2>
+                    <div class="text-muted small">
+                        <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ event.venue }}
+                        &bull; Hosted by <a href="{% url 'accounts:profile' username=event.organizer.username %}" class="text-decoration-none fw-semibold">@{{ event.organizer.username }}</a>
+                    </div>
+                </div>
+
+                <!-- RSVP Actions -->
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <form action="{% url 'events_app:event_rsvp' pk=event.pk %}" method="POST" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="going">
+                        <button type="submit" class="btn {% if user_rsvp == 'going' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">
+                            <i class="bi bi-check-circle-fill me-1"></i>Going ({{ event.going_count }})
+                        </button>
+                    </form>
+                    <form action="{% url 'events_app:event_rsvp' pk=event.pk %}" method="POST" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="interested">
+                        <button type="submit" class="btn {% if user_rsvp == 'interested' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %} fw-semibold">
+                            <i class="bi bi-star-fill me-1"></i>Interested ({{ event.interested_count }})
+                        </button>
+                    </form>
+                    {% if can_manage %}
+                        <a href="{% url 'events_app:edit_event' pk=event.pk %}" class="btn btn-cb-secondary" title="Edit Event"><i class="bi bi-pencil"></i></a>
+                        <a href="{% url 'events_app:delete_event' pk=event.pk %}" class="btn btn-outline-danger" title="Delete Event"><i class="bi bi-trash3"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Details Section -->
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <h5 class="fw-bold mb-3">About this Event</h5>
+                    <p class="text-muted" style="white-space: pre-line;">{{ event.description|default:"No description provided for this event." }}</p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="cb-card p-3">
+                        <h6 class="fw-bold mb-3 border-bottom pb-2">Attendees ({{ event.going_count }})</h6>
+                        {% if attendees %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for r in attendees %}
+                                    <a href="{% url 'accounts:profile' username=r.user.username %}" title="{{ r.user.get_display_name }}">
+                                        <img src="{{ r.user.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted small mb-0">Be the first to RSVP!</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

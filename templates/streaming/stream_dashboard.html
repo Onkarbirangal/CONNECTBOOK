@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Broadcaster Studio - {{ stream.title }} | ConnectBook Live{% endblock %}
+
+{% block extra_css %}
+<style>
+  .studio-monitor {
+    position: relative;
+    background: #020617;
+    border-radius: 12px;
+    height: 380px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #1e293b;
+  }
+  #webcamPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+  .monitor-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+  }
+  .chat-box {
+    height: 480px;
+    display: flex;
+    flex-direction: column;
+  }
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--cb-bg, #f8fafc);
+  }
+  .copy-btn {
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-3" style="max-width: 1400px;">
+  <!-- Studio Header -->
+  <div class="cb-card p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{% url 'streaming:stream_list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Streams
+      </a>
+      <div>
+        <h4 class="fw-bold mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-broadcast text-danger"></i> {{ stream.title }}
+          {% if stream.status == 'live' %}
+            <span class="badge bg-danger fs-6"><i class="bi bi-record-fill me-1"></i>LIVE</span>
+          {% elif stream.status == 'scheduled' %}
+            <span class="badge bg-primary fs-6">SCHEDULED</span>
+          {% else %}
+            <span class="badge bg-secondary fs-6">ENDED</span>
+          {% endif %}
+        </h4>
+        <small class="text-muted">Category: {{ stream.get_category_display }} &bull; Audience: {{ stream.get_audience_display }}</small>
+      </div>
+    </div>
+
+    <!-- Broadcaster Controls -->
+    <div class="d-flex align-items-center gap-2">
+      <a href="{% url 'streaming:stream_room' pk=stream.pk %}" target="_blank" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Public Room
+      </a>
+
+      {% if stream.status == 'scheduled' %}
+        <form action="{% url 'streaming:toggle_status' pk=stream.pk %}" method="POST" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="start">
+          <button type="submit" class="btn btn-danger fw-bold">
+            <i class="bi bi-play-circle-fill me-1"></i>Go Live Now
+          </button>
+        </form>
+      {% elif stream.status == 'live' %}
+        <form action="{% url 'streaming:toggle_status' pk=stream.pk %}" method="POST" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="end">
+          <button type="submit" class="btn btn-secondary fw-bold">
+            <i class="bi bi-stop-circle-fill me-1"></i>End Broadcast
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Left Column: Video Preview and Stream Ingestion Details -->
+    <div class="col-lg-7">
+      <!-- Web Camera Preview Monitor -->
+      <div class="cb-card p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold mb-0"><i class="bi bi-camera-video me-1"></i>Studio Video Preview</h6>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="btnToggleCam">
+              <i class="bi bi-camera-video-fill me-1"></i>Start Camera
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btnToggleMic">
+              <i class="bi bi-mic-fill me-1"></i>Unmute Mic
+            </button>
+          </div>
+        </div>
+
+        <div class="studio-monitor">
+          <div class="monitor-overlay">
+            <span class="badge bg-dark bg-opacity-75">
+              <i class="bi bi-eye me-1"></i><span id="liveViewerCount">{{ stream.viewer_count }}</span> Viewers
+            </span>
+            <span class="badge bg-dark bg-opacity-75" id="camStatus">Camera Standby</span>
+          </div>
+
+          <video id="webcamPreview" autoplay playsinline muted></video>
+          <div id="noCamPlaceholder" class="text-center text-white-50">
+            <i class="bi bi-camera-video-off fs-1 d-block mb-2"></i>
+            <span>Click "Start Camera" to preview your webcam feed or configure OBS below.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RTMP / WHIP Ingestion Information -->
+      <div class="cb-card p-3 mb-3">
+        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-hdd-network text-primary"></i> Streaming Software Ingestion (OBS, vMix, Streamlabs)
+        </h6>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-muted">RTMP Server URL</label>
+          <div class="input-group">
+            <input type="text" class="form-control form-control-sm font-monospace" value="{{ rtmp_server }}" readonly id="inputRtmp">
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ rtmp_server }}'); alert('Copied RTMP URL');">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-muted">Stream Key (Keep secret)</label>
+          <div class="input-group">
+            <input type="password" class="form-control form-control-sm font-monospace" value="{{ stream.stream_key }}" readonly id="inputStreamKey">
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleKeyVisibility()">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ stream.stream_key }}'); alert('Copied Stream Key');">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-muted">WHIP WebRTC Ingestion Endpoint</label>
+          <div class="input-group">
+            <input type="text" class="form-control form-control-sm font-monospace" value="{{ whip_endpoint }}" readonly>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('{{ whip_endpoint }}'); alert('Copied WHIP Endpoint');">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="alert alert-light border small mb-0">
+          <div class="fw-bold mb-1"><i class="bi bi-info-circle text-info me-1"></i>Streaming Server Architecture Notice:</div>
+          <p class="mb-0 text-muted">
+            For external broadcast delivery, ConnectBook is architected to pair with a dedicated streaming server such as <strong>MediaMTX</strong> (open source, zero dependencies RTMP/HLS/WHIP server). To run locally, download <code>mediamtx.exe</code> and start it. ConnectBook delivers signaling and live chat through Django Channels.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Live Broadcaster Chat & Moderation -->
+    <div class="col-lg-5">
+      <div class="cb-card chat-box p-3">
+        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
+          <h6 class="fw-bold mb-0"><i class="bi bi-chat-dots-fill text-danger me-1"></i>Studio Live Chat</h6>
+          <span class="badge bg-success-subtle text-success small">Real-Time WebSocket</span>
+        </div>
+
+        <!-- Chat Feed -->
+        <div class="chat-feed rounded border mb-2" id="studioChatFeed">
+          {% for m in chat_messages %}
+            <div class="mb-2 p-2 rounded bg-white shadow-sm border-start border-3 {% if m.sender == stream.host %}border-danger{% else %}border-primary{% endif %}" id="chatMsg-{{ m.id }}">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small {% if m.sender == stream.host %}text-danger{% else %}text-primary{% endif %}">
+                  {% if m.sender == stream.host %}<span class="badge bg-danger text-white me-1">Host</span>{% endif %}
+                  {{ m.sender.get_display_name }}
+                </span>
+                <div class="d-flex align-items-center gap-1">
+                  <span class="text-muted" style="font-size: 10px;">{{ m.created_at|date:"H:i" }}</span>
+                  <button class="btn btn-link text-danger p-0 ms-1" style="font-size: 11px;" onclick="deleteMessage({{ m.id }})">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="small text-break">{{ m.message }}</div>
+            </div>
+          {% empty %}
+            <div class="text-center text-muted py-5" id="noChatNotice">
+              <i class="bi bi-chat-square-text fs-2 d-block mb-2"></i>
+              No chat messages yet. Messages from viewers will appear here in real time.
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Broadcaster Chat Input -->
+        <div class="input-group">
+          <input type="text" class="form-control" id="studioChatInput" placeholder="Send a message as Host...">
+          <button class="btn btn-danger" type="button" id="btnSendStudioChat">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const STREAM_ID = {{ stream.id }};
+    const HOST_USER_ID = {{ request.user.id }};
+    const IS_HOST = true;
+
+    // Webcam Preview
+    let mediaStream = null;
+    const btnToggleCam = document.getElementById('btnToggleCam');
+    const btnToggleMic = document.getElementById('btnToggleMic');
+    const webcamVideo = document.getElementById('webcamPreview');
+    const noCamPlaceholder = document.getElementById('noCamPlaceholder');
+    const camStatus = document.getElementById('camStatus');
+
+    btnToggleCam.addEventListener('click', async () => {
+      if (!mediaStream) {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          webcamVideo.srcObject = mediaStream;
+          noCamPlaceholder.classList.add('d-none');
+          btnToggleCam.innerHTML = '<i class="bi bi-camera-video-off-fill me-1"></i>Stop Camera';
+          camStatus.textContent = 'Camera Active';
+          camStatus.className = 'badge bg-success';
+        } catch (err) {
+          alert('Could not access camera: ' + err.message);
+        }
+      } else {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+        webcamVideo.srcObject = null;
+        noCamPlaceholder.classList.remove('d-none');
+        btnToggleCam.innerHTML = '<i class="bi bi-camera-video-fill me-1"></i>Start Camera';
+        camStatus.textContent = 'Camera Standby';
+        camStatus.className = 'badge bg-dark bg-opacity-75';
+      }
+    });
+
+    btnToggleMic.addEventListener('click', () => {
+      if (mediaStream) {
+        const audio = mediaStream.getAudioTracks()[0];
+        if (audio) {
+          audio.enabled = !audio.enabled;
+          btnToggleMic.innerHTML = audio.enabled
+            ? '<i class="bi bi-mic-fill me-1"></i>Mute Mic'
+            : '<i class="bi bi-mic-mute-fill me-1"></i>Unmute Mic';
+        }
+      }
+    });
+
+    // WebSocket Connection
+    const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsUrl = wsScheme + window.location.host + '/ws/live/' + STREAM_ID + '/';
+    const ws = new WebSocket(wsUrl);
+
+    const chatFeed = document.getElementById('studioChatFeed');
+    const chatInput = document.getElementById('studioChatInput');
+    const btnSend = document.getElementById('btnSendStudioChat');
+    const viewerCountSpan = document.getElementById('liveViewerCount');
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'viewer_count_update') {
+          if (viewerCountSpan) viewerCountSpan.textContent = data.viewer_count;
+        } else if (data.type === 'stream_chat_message') {
+          appendMessage(data);
+        } else if (data.type === 'stream_message_deleted') {
+          const el = document.getElementById('chatMsg-' + data.message_id);
+          if (el) el.remove();
+        }
+      } catch (err) {
+        console.error("WS error:", err);
+      }
+    };
+
+    function appendMessage(msg) {
+      const noNotice = document.getElementById('noChatNotice');
+      if (noNotice) noNotice.remove();
+
+      const div = document.createElement('div');
+      div.id = 'chatMsg-' + msg.id;
+      div.className = 'mb-2 p-2 rounded bg-white shadow-sm border-start border-3 border-danger';
+      div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="fw-bold small text-danger">
+            <span class="badge bg-danger text-white me-1">Live</span>
+            ${msg.sender_name}
+          </span>
+          <div class="d-flex align-items-center gap-1">
+            <span class="text-muted" style="font-size: 10px;">${msg.created_at}</span>
+            <button class="btn btn-link text-danger p-0 ms-1" style="font-size: 11px;" onclick="deleteMessage(${msg.id})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="small text-break">${msg.message}</div>
+      `;
+      chatFeed.appendChild(div);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        action: 'chat',
+        message: text
+      }));
+      chatInput.value = '';
+    }
+
+    btnSend.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    window.deleteMessage = function(msgId) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: 'delete_message',
+          message_id: msgId
+        }));
+      }
+      fetch('/live/' + STREAM_ID + '/chat/' + msgId + '/delete/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+    };
+
+    window.toggleKeyVisibility = function() {
+      const keyInput = document.getElementById('inputStreamKey');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (keyInput.type === 'password') {
+        keyInput.type = 'text';
+        eyeIcon.className = 'bi bi-eye-slash';
+      } else {
+        keyInput.type = 'password';
+        eyeIcon.className = 'bi bi-eye';
+      }
+    };
+
+  })();
+</script>
+{% endblock %}

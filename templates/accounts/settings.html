@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Settings & Privacy | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4 px-2 px-md-3" style="max-width: 850px;">
+    <!-- Navigation Tabs -->
+    <div class="cb-feed-tabs mb-4 p-0">
+        <a href="{% url 'accounts:settings' %}" class="btn btn-cb-primary btn-sm rounded-pill"><i class="bi bi-gear-fill me-1"></i>General</a>
+        <a href="{% url 'accounts:privacy_settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-shield-check me-1"></i>Privacy Center</a>
+        <a href="{% url 'accounts:security_settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-shield-lock me-1"></i>Security & Sessions</a>
+        <a href="{% url 'accounts:your_information' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-download me-1"></i>Your Information</a>
+    </div>
+
+    <h3 class="fw-bold mb-4 fs-4 fs-md-3">Account Settings</h3>
+
+    <!-- Security & Password -->
+    <div class="cb-card p-3 p-md-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Change Password</h5>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="change_password" value="1">
+            
+            <div class="mb-3">
+                <label class="form-label">Old Password</label>
+                {{ password_form.old_password }}
+                {% if password_form.old_password.errors %}
+                    <div class="text-danger small">{{ password_form.old_password.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">New Password</label>
+                {{ password_form.new_password1 }}
+                {% if password_form.new_password1.errors %}
+                    <div class="text-danger small">{{ password_form.new_password1.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                {{ password_form.new_password2 }}
+                {% if password_form.new_password2.errors %}
+                    <div class="text-danger small">{{ password_form.new_password2.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-cb-primary">Update Password</button>
+        </form>
+    </div>
+
+    <!-- Blocking -->
+    <div class="cb-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-slash-circle-fill text-danger me-2"></i>Blocked Users</h5>
+        {% if blocked_users %}
+            <div class="list-group">
+                {% for b in blocked_users %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between" style="background: var(--cb-card); color: var(--cb-text); border-color: var(--cb-border);">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ b.blocked.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <div>
+                                <span class="fw-bold">{{ b.blocked.get_display_name }}</span>
+                                <span class="text-muted small">(@{{ b.blocked.username }})</span>
+                            </div>
+                        </div>
+                        <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Unblock</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">You have not blocked any users.</p>
+        {% endif %}
+    </div>
+
+    <!-- Account Actions -->
+    <div class="cb-card p-4 border-danger">
+        <h5 class="fw-bold text-danger mb-2">Deactivate Account</h5>
+        <p class="text-muted small mb-3">Deactivating your account will disable your profile and hide your name and photos from most things you've shared on ConnectBook.</p>
+        <a href="{% url 'accounts:deactivate' %}" class="btn btn-outline-danger btn-sm">Deactivate Account</a>
+    </div>
+</div>
+{% endblock %}

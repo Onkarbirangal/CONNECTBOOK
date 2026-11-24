@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Reel | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <div class="cb-card p-4 shadow-sm border" style="border-radius: 12px; background: var(--cb-card);">
+        <div class="d-flex align-items-center justify-content-between pb-3 border-bottom mb-4" style="border-color: var(--cb-border) !important;">
+            <h4 class="fw-bold mb-0"><i class="bi bi-camera-reels-fill text-danger me-2"></i>Create New Reel</h4>
+            <a href="{% url 'social:reels' %}" class="btn btn-sm btn-outline-secondary rounded-pill">Cancel</a>
+        </div>
+
+        <!-- Mode Switcher: Upload or Record -->
+        <ul class="nav nav-pills nav-fill mb-4 p-1 rounded border" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+            <li class="nav-item">
+                <button type="button" class="nav-link active fw-bold" id="tabUploadBtn" onclick="switchReelMode('upload')">
+                    <i class="bi bi-upload me-1"></i> Upload Video File
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link fw-bold" id="tabRecordBtn" onclick="switchReelMode('record')">
+                    <i class="bi bi-camera-video me-1"></i> Record with Camera
+                </button>
+            </li>
+        </ul>
+
+        <form action="{% url 'social:upload_reel' %}" method="POST" enctype="multipart/form-data" id="reelCreateForm">
+            {% csrf_token %}
+            <input type="hidden" name="status" id="reelStatusInput" value="published">
+
+            <div class="row g-4">
+                <!-- Left Column: Video Capture / Upload / 9:16 Preview -->
+                <div class="col-md-5">
+                    <!-- 1. File Upload Dropzone -->
+                    <div id="reelUploadSection">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Vertical Video (9:16)</label>
+                        <div class="p-4 border border-dashed rounded text-center d-flex flex-column align-items-center justify-content-center" style="border-width: 2px !important; min-height: 240px; cursor: pointer; background: var(--cb-bg);" onclick="document.getElementById('reelVideoInput').click();">
+                            <i class="bi bi-phone text-danger fs-1 mb-2"></i>
+                            <div class="fw-semibold small">Choose Short Video</div>
+                            <div class="text-muted" style="font-size: 11px;">MP4, WebM, MOV &bull; Max 50MB</div>
+                            <div class="mt-2 text-primary fw-bold small text-truncate" id="reelFileName" style="max-width: 180px;"></div>
+                        </div>
+                        <input type="file" name="video_file" id="reelVideoInput" accept="video/mp4,video/webm,video/quicktime" class="d-none">
+                    </div>
+
+                    <!-- 2. Browser Camera Recording Section -->
+                    <div id="reelRecordSection" style="display: none;">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Webcam Recording</label>
+                        <div class="position-relative bg-black rounded overflow-hidden text-center" style="height: 240px;">
+                            <video id="reelCameraPreview" autoplay playsinline muted class="w-100 h-100 object-fit-cover"></video>
+                            <div id="reelRecordTimer" class="position-absolute top-0 start-0 m-2 badge bg-danger fs-6" style="display: none;">00:00</div>
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-sm btn-danger flex-grow-1 rounded-pill" id="startRecordBtn" onclick="startCameraRecording()">
+                                <i class="bi bi-record-circle me-1"></i> Start Recording
+                            </button>
+                            <button type="button" class="btn btn-sm btn-dark flex-grow-1 rounded-pill" id="stopRecordBtn" onclick="stopCameraRecording()" style="display: none;">
+                                <i class="bi bi-stop-circle me-1"></i> Stop Recording
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Live 9:16 Video Player Preview -->
+                    <div id="reelVideoPreviewBox" class="mt-3" style="display: none;">
+                        <label class="form-label fw-bold small text-uppercase text-muted">Preview Player</label>
+                        <div class="position-relative bg-black rounded overflow-hidden" style="aspect-ratio: 9/16; max-height: 280px;">
+                            <video id="reelPlayerPreview" controls playsinline class="w-100 h-100 object-fit-contain"></video>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Metadata & Settings -->
+                <div class="col-md-7">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Caption & Hashtags</label>
+                        <textarea name="caption" rows="3" class="form-control" placeholder="Write a catchy caption... e.g. Weekend vibes! #connectbook #fun"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Audio Track Title</label>
+                        <input type="text" name="audio_title" class="form-control form-control-sm" placeholder="Original Audio – Artist or Sound Title">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Location Check-In</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="bi bi-geo-alt-fill text-danger"></i></span>
+                            <input type="text" name="location" class="form-control" placeholder="Add location (e.g. Times Square, New York)">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Tag Friends</label>
+                        <select name="tagged_friends" multiple class="form-select form-select-sm" size="3">
+                            {% for f in friends %}
+                                <option value="{{ f.id }}">{{ f.get_display_name }} (@{{ f.username }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text" style="font-size: 11px;">Hold Ctrl / Cmd to select multiple friends.</div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Audience</label>
+                            <select name="privacy" class="form-select form-select-sm">
+                                <option value="public">Public</option>
+                                <option value="friends">Friends Only</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small">Thumbnail (Optional)</label>
+                            <input type="file" name="thumbnail" accept="image/*" class="form-control form-control-sm">
+                        </div>
+                    </div>
+
+                    <div class="p-3 rounded border mb-4" style="background: var(--cb-bg); border-color: var(--cb-border) !important;">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="comments_enabled" value="true" id="checkComments" checked>
+                            <label class="form-check-label small fw-semibold" for="checkComments">Allow Comments</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="allow_sharing" value="true" id="checkSharing" checked>
+                            <label class="form-check-label small fw-semibold" for="checkSharing">Allow Sharing & Resharing</label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" onclick="document.getElementById('reelStatusInput').value='draft';" class="btn btn-outline-secondary w-50 py-2 fw-semibold rounded-pill">
+                            <i class="bi bi-bookmark me-1"></i> Save Draft
+                        </button>
+                        <button type="submit" onclick="document.getElementById('reelStatusInput').value='published';" class="btn btn-danger w-50 py-2 fw-bold rounded-pill shadow-sm">
+                            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Publish Reel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let mediaStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordInterval = null;
+
+function switchReelMode(mode) {
+    const uploadBtn = document.getElementById('tabUploadBtn');
+    const recordBtn = document.getElementById('tabRecordBtn');
+    const uploadSec = document.getElementById('reelUploadSection');
+    const recordSec = document.getElementById('reelRecordSection');
+
+    if (mode === 'upload') {
+        uploadBtn.classList.add('active');
+        recordBtn.classList.remove('active');
+        uploadSec.style.display = 'block';
+        recordSec.style.display = 'none';
+        stopCameraStream();
+    } else {
+        recordBtn.classList.add('active');
+        uploadBtn.classList.remove('active');
+        recordSec.style.display = 'block';
+        uploadSec.style.display = 'none';
+        startCameraStream();
+    }
+}
+
+function startCameraStream() {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', aspectRatio: 9/16 }, audio: true })
+            .then(stream => {
+                mediaStream = stream;
+                document.getElementById('reelCameraPreview').srcObject = stream;
+            })
+            .catch(err => {
+                alert('Could not access camera or microphone: ' + err.message);
+                switchReelMode('upload');
+            });
+    }
+}
+
+function stopCameraStream() {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+    }
+}
+
+function startCameraRecording() {
+    if (!mediaStream) return;
+    recordedChunks = [];
+    try {
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+    } catch {
+        mediaRecorder = new MediaRecorder(mediaStream);
+    }
+
+    mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const file = new File([blob], 'recorded_reel.webm', { type: 'video/webm' });
+
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById('reelVideoInput').files = dataTransfer.files;
+
+        // Preview player
+        const player = document.getElementById('reelPlayerPreview');
+        player.src = URL.createObjectURL(blob);
+        document.getElementById('reelVideoPreviewBox').style.display = 'block';
+        document.getElementById('reelFileName').textContent = 'Camera recording ready (recorded_reel.webm)';
+    };
+
+    mediaRecorder.start();
+    document.getElementById('startRecordBtn').style.display = 'none';
+    document.getElementById('stopRecordBtn').style.display = 'block';
+
+    let seconds = 0;
+    const timerBadge = document.getElementById('reelRecordTimer');
+    timerBadge.style.display = 'block';
+    timerBadge.textContent = '00:00';
+    recordInterval = setInterval(() => {
+        seconds++;
+        const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const secs = String(seconds % 60).padStart(2, '0');
+        timerBadge.textContent = `${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopCameraRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    clearInterval(recordInterval);
+    document.getElementById('reelRecordTimer').style.display = 'none';
+    document.getElementById('startRecordBtn').style.display = 'block';
+    document.getElementById('stopRecordBtn').style.display = 'none';
+}
+
+document.getElementById('reelVideoInput').addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+        const file = this.files[0];
+        document.getElementById('reelFileName').textContent = file.name;
+        const player = document.getElementById('reelPlayerPreview');
+        player.src = URL.createObjectURL(file);
+        document.getElementById('reelVideoPreviewBox').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

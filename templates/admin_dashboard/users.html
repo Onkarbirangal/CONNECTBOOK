@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}User Management | Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-md-4 px-2 px-md-4">
+    <div class="d-flex align-items-md-center justify-content-between flex-column flex-md-row gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 fs-3 fs-md-2">User Management</h2>
+            <div class="text-muted small">View, inspect, and manage community members.</div>
+        </div>
+        <a href="{% url 'admin_dashboard:overview' %}" class="btn btn-cb-secondary btn-sm py-2">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard Overview
+        </a>
+    </div>
+
+    <div class="cb-card p-3 p-md-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Joined</th>
+                        <th>Status</th>
+                        <th>Staff</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ u.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=u.username %}" class="fw-bold text-decoration-none text-reset">
+                                            {{ u.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small">@{{ u.username }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="small">{{ u.email }}</td>
+                            <td class="small">{{ u.date_joined|date:"M d, Y" }}</td>
+                            <td>
+                                {% if u.is_active and not u.is_deactivated %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Suspended</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if u.is_staff %}<span class="badge bg-primary">Staff</span>{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a href="{% url 'accounts:profile' username=u.username %}" class="btn btn-sm btn-light border" title="View Profile">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if not u.is_superuser %}
+                                        <form action="{% url 'admin_dashboard:toggle_user_active' user_id=u.id %}" method="POST" class="m-0" onsubmit="return confirm('Toggle active status for this user?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                                {% if u.is_active %}Suspend{% else %}Activate{% endif %}
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

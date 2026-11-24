@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Streams & Broadcasts | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 1200px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-broadcast text-danger me-2"></i>ConnectBook Live</h3>
+            <p class="text-muted small mb-0">Watch real-time live events, interact with streamers, or start your own broadcast.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'streaming:create_stream' %}" class="btn btn-danger fw-semibold">
+                <i class="bi bi-camera-video-fill me-1"></i>Go Live / Schedule
+            </a>
+        </div>
+    </div>
+
+    <!-- Category Filter Pills -->
+    <div class="d-flex flex-wrap gap-2 mb-4 pb-2 border-bottom">
+        <a href="{% url 'streaming:stream_list' %}" class="btn btn-sm {% if not selected_category %}btn-danger{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+            All Categories
+        </a>
+        {% for cat_val, cat_label in categories %}
+            <a href="{% url 'streaming:stream_list' %}?category={{ cat_val }}" class="btn btn-sm {% if selected_category == cat_val %}btn-danger{% else %}btn-outline-secondary{% endif %} rounded-pill px-3">
+                {{ cat_label }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- Live Now Section -->
+    <div class="mb-5">
+        <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+            <span class="badge bg-danger rounded-circle p-1" style="width: 10px; height: 10px;"></span>
+            Live Now
+        </h4>
+        <div class="row g-4">
+            {% for s in live_now %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm">
+                        <div style="height: 190px; background-image: url('{{ s.get_thumbnail_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                            <span class="badge bg-danger position-absolute top-0 start-0 m-2 px-2 py-1"><i class="bi bi-record-fill me-1"></i>LIVE</span>
+                            <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2"><i class="bi bi-eye me-1"></i>{{ s.viewer_count }} watching</span>
+                            <span class="badge bg-secondary position-absolute bottom-0 start-0 m-2">{{ s.get_category_display }}</span>
+                        </div>
+                        <div class="p-3 flex-grow-1 d-flex flex-column">
+                            <h5 class="fw-bold mb-1">
+                                <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="text-decoration-none text-dark">
+                                    {{ s.title }}
+                                </a>
+                            </h5>
+                            <div class="text-muted small mb-2">Host: <a href="{% url 'accounts:profile' username=s.host.username %}" class="fw-semibold text-decoration-none">@{{ s.host.username }}</a></div>
+                            {% if s.description %}
+                                <p class="text-muted small flex-grow-1">{{ s.description|truncatechars:90 }}</p>
+                            {% endif %}
+                            <div class="mt-auto d-flex gap-2">
+                                <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="btn btn-danger btn-sm flex-grow-1 fw-semibold">
+                                    <i class="bi bi-play-circle-fill me-1"></i>Watch Broadcast
+                                </a>
+                                {% if s.host == request.user %}
+                                    <a href="{% url 'streaming:stream_dashboard' pk=s.pk %}" class="btn btn-outline-secondary btn-sm" title="Studio">
+                                        <i class="bi bi-sliders"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <div class="cb-card p-4 text-center text-muted">
+                        <i class="bi bi-camera-video-off fs-1 d-block mb-2 text-secondary"></i>
+                        No creators are currently streaming live in this category.
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Scheduled Upcoming Section -->
+    <div class="mb-5">
+        <h4 class="fw-bold mb-3"><i class="bi bi-calendar-event text-primary me-2"></i>Scheduled Streams</h4>
+        <div class="row g-4">
+            {% for s in scheduled %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm">
+                        <div style="height: 170px; background-image: url('{{ s.get_thumbnail_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                            <span class="badge bg-primary position-absolute top-0 start-0 m-2">SCHEDULED</span>
+                            <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">{{ s.scheduled_start|date:"M d, H:i" }}</span>
+                            <span class="badge bg-secondary position-absolute bottom-0 start-0 m-2">{{ s.get_category_display }}</span>
+                        </div>
+                        <div class="p-3 flex-grow-1 d-flex flex-column">
+                            <h5 class="fw-bold mb-1">
+                                <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="text-decoration-none text-dark">
+                                    {{ s.title }}
+                                </a>
+                            </h5>
+                            <div class="text-muted small mb-2">Host: <a href="{% url 'accounts:profile' username=s.host.username %}" class="fw-semibold text-decoration-none">@{{ s.host.username }}</a></div>
+                            <div class="mt-auto d-flex gap-2">
+                                <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="btn btn-outline-primary btn-sm flex-grow-1">
+                                    View Details
+                                </a>
+                                {% if s.host == request.user %}
+                                    <a href="{% url 'streaming:stream_dashboard' pk=s.pk %}" class="btn btn-outline-danger btn-sm" title="Studio">
+                                        <i class="bi bi-sliders me-1"></i>Studio
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <div class="cb-card p-3 text-center text-muted">No scheduled upcoming streams.</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Ended / Past Broadcasts -->
+    {% if ended %}
+        <div>
+            <h4 class="fw-bold mb-3"><i class="bi bi-clock-history text-secondary me-2"></i>Recent Past Broadcasts</h4>
+            <div class="row g-4">
+                {% for s in ended %}
+                    <div class="col-md-6 col-lg-3">
+                        <div class="cb-card h-100 overflow-hidden d-flex flex-column opacity-75">
+                            <div style="height: 140px; background-image: url('{{ s.get_thumbnail_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                                <span class="badge bg-secondary position-absolute top-0 start-0 m-2">ENDED</span>
+                            </div>
+                            <div class="p-2 flex-grow-1">
+                                <h6 class="fw-bold mb-1 text-truncate">{{ s.title }}</h6>
+                                <small class="text-muted d-block">Host: @{{ s.host.username }}</small>
+                                <small class="text-muted">{{ s.ended_at|timesince }} ago</small>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

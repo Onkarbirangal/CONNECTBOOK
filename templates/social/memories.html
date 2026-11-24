@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Memories | ConnectBook{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <div class="cb-card p-4 text-center mb-4" style="background: linear-gradient(135deg, #1877F2 0%, #00C6FF 100%); color: #fff;">
+        <i class="bi bi-clock-history fs-1 mb-2"></i>
+        <h3 class="fw-bold mb-1">On This Day</h3>
+        <p class="mb-0 opacity-75">{{ today|date:"F j" }} &bull; We hope you enjoy looking back on your memories!</p>
+    </div>
+    {% if memories %}
+        {% for post in memories %}
+            <div class="text-muted fw-bold mb-2 ps-2">
+                {{ post.created_at|date:"Y" }} &bull; {{ today.year|add:"-1" }} years ago
+            </div>
+            {% include 'includes/post_card.html' with post=post %}
+        {% endfor %}
+    {% else %}
+        <div class="cb-card text-center p-5 text-muted">
+            <i class="bi bi-calendar-event fs-1 mb-2"></i>
+            <h5>No Memories Today</h5>
+            <p class="small">We don't have any memories for you to look back on today. We'll notify you when you do!</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Moderation Queue | Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-md-4 px-2 px-md-4">
+    <div class="d-flex align-items-md-center justify-content-between flex-column flex-md-row gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 fs-3 fs-md-2">Moderation Queue</h2>
+            <div class="text-muted small">Review flagged content, policy violations, and user reports.</div>
+        </div>
+        <a href="{% url 'admin_dashboard:overview' %}" class="btn btn-cb-secondary btn-sm py-2">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard Overview
+        </a>
+    </div>
+
+    <div class="cb-card p-3 p-md-4">
+        {% if reports %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Report #</th>
+                            <th>Target</th>
+                            <th>Reporter</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in reports %}
+                            <tr>
+                                <td class="small">#{{ r.id }}</td>
+                                <td>
+                                    <span class="badge bg-secondary text-uppercase">{{ r.target_type }}</span> #{{ r.target_id }}
+                                </td>
+                                <td class="small">{{ r.reporter.get_display_name }}</td>
+                                <td>
+                                    <strong>{{ r.get_reason_display }}</strong>
+                                    {% if r.details %}<div class="small text-muted">{{ r.details }}</div>{% endif %}
+                                </td>
+                                <td>
+                                    {% if r.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif r.status == 'resolved' %}
+                                        <span class="badge bg-success">Resolved</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Dismissed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small text-muted">{{ r.created_at|date:"M d, H:i" }}</td>
+                                <td>
+                                    {% if r.status == 'pending' %}
+                                        <form action="{% url 'admin_dashboard:resolve_report' report_id=r.id %}" method="POST" class="d-flex gap-1 m-0 flex-wrap">
+                                            {% csrf_token %}
+                                            <button type="submit" name="action" value="resolve_remove" class="btn btn-sm btn-danger py-1 px-2" onclick="return confirm('Remove reported content and resolve?');" style="font-size: 12px;">
+                                                Remove Content
+                                            </button>
+                                            <button type="submit" name="action" value="dismiss" class="btn btn-sm btn-light border py-1 px-2" style="font-size: 12px;">
+                                                Dismiss
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <span class="small text-muted">Reviewed by {{ r.reviewed_by.username|default:"Staff" }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center text-muted p-5">
+                <i class="bi bi-shield-check fs-1 text-success mb-2"></i>
+                <h5>Moderation Queue is Clean</h5>
+                <p class="small">No pending violation reports found.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

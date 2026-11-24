@@ -1,0 +1,661 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    {% if tab == 'requests' %}Friend Requests
+    {% elif tab == 'sent' %}Sent Requests
+    {% elif tab == 'suggestions' %}Friend Suggestions
+    {% elif tab == 'birthdays' %}Birthdays
+    {% elif tab == 'followers' %}Followers
+    {% elif tab == 'following' %}Following
+    {% elif tab == 'blocked' %}Blocked Users
+    {% else %}All Friends
+    {% endif %} | ConnectBook
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-2 py-md-4 px-2 px-md-4" style="max-width: 1400px;">
+    <div class="cb-friends-layout">
+        <!-- Friends Left Sidebar Navigation -->
+        <aside class="cb-friends-sidebar">
+            <div class="cb-card p-3 mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-people-fill text-primary me-2"></i>Friends
+                    </h5>
+                    {% if pending_received_count > 0 %}
+                        <span class="badge bg-danger rounded-pill">{{ pending_received_count }} new</span>
+                    {% endif %}
+                </div>
+
+                <div class="cb-friends-sidebar-nav">
+                    <a href="{% url 'friends:list' %}?tab=all{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'all' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-check fs-5"></i>
+                            <span>All Friends</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ total_friends_count }}</span>
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=requests{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'requests' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-plus fs-5"></i>
+                            <span>Friend Requests</span>
+                        </div>
+                        {% if pending_received_count > 0 %}
+                            <span class="badge bg-primary rounded-pill">{{ pending_received_count }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary rounded-pill">0</span>
+                        {% endif %}
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=sent{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'sent' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-send fs-5"></i>
+                            <span>Sent Requests</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ pending_sent_count }}</span>
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=suggestions{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'suggestions' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-compass fs-5"></i>
+                            <span>Suggestions</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ suggestions_count }}</span>
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=birthdays{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'birthdays' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-cake2 fs-5"></i>
+                            <span>Birthdays</span>
+                        </div>
+                        {% if birthdays_count > 0 %}
+                            <span class="badge bg-warning text-dark rounded-pill">{{ birthdays_count }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary rounded-pill">0</span>
+                        {% endif %}
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=followers{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'followers' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-lines-fill fs-5"></i>
+                            <span>Followers</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ followers_count }}</span>
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=following{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'following' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-check-fill fs-5"></i>
+                            <span>Following</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ following_count }}</span>
+                    </a>
+
+                    <a href="{% url 'friends:list' %}?tab=blocked{% if search_q %}&q={{ search_q }}{% endif %}"
+                       class="cb-friends-nav-item {% if tab == 'blocked' %}active{% endif %}">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-slash-circle fs-5"></i>
+                            <span>Blocked Users</span>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">{{ blocked_count }}</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Friends Content Area -->
+        <main class="flex-grow-1 min-w-0">
+            <!-- Search & Actions Top Bar -->
+            <div class="cb-card p-3 mb-4">
+                <form method="GET" action="{% url 'friends:list' %}" class="row g-2 align-items-center">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <div class="col-12 col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text"
+                                   name="q"
+                                   class="form-control border-start-0 ps-0"
+                                   placeholder="Search by name or username..."
+                                   value="{{ search_q }}">
+                            {% if search_q %}
+                                <a href="{% url 'friends:list' %}?tab={{ tab }}" class="btn btn-outline-secondary" title="Clear search">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-cb-primary">Search</button>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4 text-md-end">
+                        {% if tab != 'suggestions' %}
+                            <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-secondary w-100 w-md-auto">
+                                <i class="bi bi-person-plus me-1"></i>Find Suggestions
+                            </a>
+                        {% else %}
+                            <a href="{% url 'friends:list' %}?tab=all" class="btn btn-cb-secondary w-100 w-md-auto">
+                                <i class="bi bi-people me-1"></i>All Friends
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+
+            <!-- Content for Active Tab -->
+            {% if tab == 'all' %}
+                <!-- All Friends Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        All Friends <span class="text-muted fs-6">({{ friends|length }})</span>
+                    </h4>
+                </div>
+
+                {% if friends %}
+                    <div class="cb-friends-grid">
+                        {% for f in friends %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover">
+                                    <div class="dropdown cb-friend-card-menu">
+                                        <button class="btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Options">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end cb-dropdown-menu shadow">
+                                            <li>
+                                                <a class="cb-dropdown-item" href="{% url 'chat:direct' user_id=f.id %}">
+                                                    <i class="bi bi-chat-dots text-primary me-2"></i>Send Message
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="cb-dropdown-item" href="{% url 'accounts:profile' username=f.username %}">
+                                                    <i class="bi bi-person-badge text-info me-2"></i>View Profile
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            <li>
+                                                <form action="{% url 'accounts:toggle_follow' username=f.username %}" method="POST" class="m-0">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="cb-dropdown-item border-0 bg-transparent w-100 text-start">
+                                                        <i class="bi bi-bell-slash me-2"></i>Unfollow
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form action="{% url 'friends:remove_friend' user_id=f.id %}" method="POST" class="m-0" onsubmit="return confirm('Remove {{ f.get_display_name }} from friends?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="cb-dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                                                        <i class="bi bi-person-x text-danger me-2"></i>Unfriend
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form action="{% url 'accounts:toggle_block' user_id=f.id %}" method="POST" class="m-0" onsubmit="return confirm('Block {{ f.get_display_name }}? You will no longer see each other\'s content.');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="cb-dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                                                        <i class="bi bi-slash-circle text-danger me-2"></i>Block
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <a href="{% url 'accounts:profile' username=f.username %}">
+                                    <img src="{{ f.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ f.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=f.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate"
+                                           title="{{ f.get_display_name }}">
+                                            {{ f.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ f.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if f.mutual_count > 0 %}
+                                                <i class="bi bi-people me-1"></i>{{ f.mutual_count }} mutual friend{{ f.mutual_count|pluralize }}
+                                            {% else %}
+                                                <i class="bi bi-person me-1"></i>Friend
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-3">
+                                        <a href="{% url 'chat:direct' user_id=f.id %}" class="btn btn-sm btn-cb-primary flex-grow-1">
+                                            <i class="bi bi-chat-fill me-1"></i>Message
+                                        </a>
+                                        <a href="{% url 'accounts:profile' username=f.username %}" class="btn btn-sm btn-cb-secondary flex-grow-1">
+                                            Profile
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-people display-4 mb-3 text-secondary"></i>
+                        <h5>No Friends Found</h5>
+                        <p class="small text-muted mb-3">
+                            {% if search_q %}
+                                No friends matched your search query "{{ search_q }}".
+                            {% else %}
+                                You haven't added any friends yet. Explore suggestions to connect with people!
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-primary">
+                            <i class="bi bi-compass me-1"></i>Browse Suggestions
+                        </a>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'requests' %}
+                <!-- Friend Requests Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        Friend Requests <span class="text-muted fs-6">({{ pending_received|length }})</span>
+                    </h4>
+                </div>
+
+                {% if pending_received %}
+                    <div class="cb-friends-grid">
+                        {% for req in pending_received %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover"></div>
+                                <a href="{% url 'accounts:profile' username=req.sender.username %}">
+                                    <img src="{{ req.sender.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ req.sender.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=req.sender.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ req.sender.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ req.sender.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if req.sender.mutual_count > 0 %}
+                                                <i class="bi bi-people me-1"></i>{{ req.sender.mutual_count }} mutual friend{{ req.sender.mutual_count|pluralize }}
+                                            {% else %}
+                                                <i class="bi bi-clock me-1"></i>{{ req.created_at|timesince }} ago
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex flex-column gap-2 mt-3">
+                                        <form action="{% url 'friends:accept_request' request_id=req.id %}" method="POST" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-cb-primary w-100">
+                                                <i class="bi bi-check-lg me-1"></i>Confirm
+                                            </button>
+                                        </form>
+                                        <form action="{% url 'friends:reject_request' request_id=req.id %}" method="POST" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-cb-secondary w-100">
+                                                <i class="bi bi-x-lg me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-person-check display-4 mb-3 text-secondary"></i>
+                        <h5>No Pending Friend Requests</h5>
+                        <p class="small text-muted">When people send you friend requests, they will appear here.</p>
+                        <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-primary mt-2">
+                            <i class="bi bi-compass me-1"></i>Find Friends
+                        </a>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'sent' %}
+                <!-- Sent Requests Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        Sent Friend Requests <span class="text-muted fs-6">({{ pending_sent|length }})</span>
+                    </h4>
+                </div>
+
+                {% if pending_sent %}
+                    <div class="cb-friends-grid">
+                        {% for req in pending_sent %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover"></div>
+                                <a href="{% url 'accounts:profile' username=req.receiver.username %}">
+                                    <img src="{{ req.receiver.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ req.receiver.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=req.receiver.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ req.receiver.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ req.receiver.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            <i class="bi bi-send me-1"></i>Sent {{ req.created_at|timesince }} ago
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <form action="{% url 'friends:cancel_request' user_id=req.receiver.id %}" method="POST" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                                <i class="bi bi-x-circle me-1"></i>Cancel Request
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-send-check display-4 mb-3 text-secondary"></i>
+                        <h5>No Sent Requests Pending</h5>
+                        <p class="small text-muted">You have no outgoing friend requests waiting for approval.</p>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'suggestions' %}
+                <!-- Friend Suggestions Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-0">
+                            People You May Know <span class="text-muted fs-6">({{ suggested_list|length }})</span>
+                        </h4>
+                        <p class="text-muted small mb-0">Ranked by mutual friends and community connections</p>
+                    </div>
+                </div>
+
+                {% if suggested_list %}
+                    <div class="cb-friends-grid">
+                        {% for s in suggested_list %}
+                            <div class="cb-friend-card" id="suggested-card-{{ s.id }}">
+                                <div class="cb-friend-card-cover"></div>
+                                <a href="{% url 'accounts:profile' username=s.username %}">
+                                    <img src="{{ s.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ s.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=s.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ s.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ s.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if s.mutual_count > 0 %}
+                                                <i class="bi bi-people-fill text-primary me-1"></i>{{ s.mutual_count }} mutual friend{{ s.mutual_count|pluralize }}
+                                            {% else %}
+                                                <i class="bi bi-globe me-1"></i>Suggested for you
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-3">
+                                        <form action="{% url 'friends:send_request' user_id=s.id %}" method="POST" class="m-0 flex-grow-1">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-cb-primary w-100">
+                                                <i class="bi bi-person-plus-fill me-1"></i>Add Friend
+                                            </button>
+                                        </form>
+                                        <button type="button"
+                                                class="btn btn-sm btn-cb-secondary"
+                                                title="Dismiss"
+                                                onclick="document.getElementById('suggested-card-{{ s.id }}').style.display='none';">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-check2-circle display-4 mb-3 text-secondary"></i>
+                        <h5>No New Suggestions Right Now</h5>
+                        <p class="small text-muted">Check back later or search for people using the search bar above.</p>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'birthdays' %}
+                <!-- Birthdays Tab -->
+                <div class="cb-birthday-banner mb-4 d-flex align-items-center gap-3">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 54px; height: 54px; min-width: 54px;">
+                        <i class="bi bi-cake2-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold mb-1">Friend Birthdays</h4>
+                        <p class="text-muted small mb-0">Never miss a chance to celebrate with your friends and send warm wishes.</p>
+                    </div>
+                </div>
+
+                {% if birthdays %}
+                    <div class="cb-friends-grid">
+                        {% for b in birthdays %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover" style="background: linear-gradient(135deg, #FF6B6B, #FFE66D);"></div>
+                                <a href="{% url 'accounts:profile' username=b.username %}">
+                                    <img src="{{ b.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ b.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=b.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ b.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ b.username }}</div>
+                                        <div class="text-primary small mt-1 fw-bold">
+                                            <i class="bi bi-gift-fill me-1"></i>Birthday Celebration Today!
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <a href="{% url 'chat:direct' user_id=b.id %}" class="btn btn-sm btn-cb-primary w-100">
+                                            <i class="bi bi-chat-heart-fill me-1"></i>Wish Happy Birthday
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-calendar-heart display-4 mb-3 text-secondary"></i>
+                        <h5>No Birthdays Today</h5>
+                        <p class="small text-muted">None of your friends have their birthday celebration today. Check back tomorrow!</p>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'followers' %}
+                <!-- Followers Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        Followers <span class="text-muted fs-6">({{ followers|length }})</span>
+                    </h4>
+                </div>
+
+                {% if followers %}
+                    <div class="cb-friends-grid">
+                        {% for fol in followers %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover"></div>
+                                <a href="{% url 'accounts:profile' username=fol.follower.username %}">
+                                    <img src="{{ fol.follower.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ fol.follower.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=fol.follower.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ fol.follower.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ fol.follower.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if fol.follower.mutual_count > 0 %}
+                                                <i class="bi bi-people me-1"></i>{{ fol.follower.mutual_count }} mutual friend{{ fol.follower.mutual_count|pluralize }}
+                                            {% else %}
+                                                <i class="bi bi-person-check me-1"></i>Following you
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-3">
+                                        <a href="{% url 'chat:direct' user_id=fol.follower.id %}" class="btn btn-sm btn-cb-primary flex-grow-1">
+                                            Message
+                                        </a>
+                                        <a href="{% url 'accounts:profile' username=fol.follower.username %}" class="btn btn-sm btn-cb-secondary flex-grow-1">
+                                            Profile
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-person-lines-fill display-4 mb-3 text-secondary"></i>
+                        <h5>No Followers Yet</h5>
+                        <p class="small text-muted">Share your thoughts and posts to build an active following!</p>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'following' %}
+                <!-- Following Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        Following <span class="text-muted fs-6">({{ following|length }})</span>
+                    </h4>
+                </div>
+
+                {% if following %}
+                    <div class="cb-friends-grid">
+                        {% for fol in following %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover"></div>
+                                <a href="{% url 'accounts:profile' username=fol.followed.username %}">
+                                    <img src="{{ fol.followed.profile.get_avatar_url }}"
+                                         class="cb-friend-card-avatar"
+                                         alt="{{ fol.followed.get_display_name }}"
+                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                </a>
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=fol.followed.username %}"
+                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                            {{ fol.followed.get_display_name }}
+                                        </a>
+                                        <div class="text-muted small text-truncate">@{{ fol.followed.username }}</div>
+                                        <div class="text-muted small mt-1">
+                                            {% if fol.followed.mutual_count > 0 %}
+                                                <i class="bi bi-people me-1"></i>{{ fol.followed.mutual_count }} mutual friend{{ fol.followed.mutual_count|pluralize }}
+                                            {% else %}
+                                                <i class="bi bi-check-circle-fill text-primary me-1"></i>Following
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 mt-3">
+                                        <form action="{% url 'accounts:toggle_follow' username=fol.followed.username %}" method="POST" class="m-0 flex-grow-1">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-cb-secondary w-100">
+                                                Unfollow
+                                            </button>
+                                        </form>
+                                        <a href="{% url 'chat:direct' user_id=fol.followed.id %}" class="btn btn-sm btn-cb-primary flex-grow-1 text-center">
+                                            Message
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-person-x display-4 mb-3 text-secondary"></i>
+                        <h5>You Are Not Following Anyone Yet</h5>
+                        <p class="small text-muted">Discover interesting people and follow them to see their public posts.</p>
+                        <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-primary mt-2">
+                            <i class="bi bi-compass me-1"></i>Find Suggestions
+                        </a>
+                    </div>
+                {% endif %}
+
+            {% elif tab == 'blocked' %}
+                <!-- Blocked Users Tab -->
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold mb-0">
+                        Blocked Users <span class="text-muted fs-6">({{ blocked_users|length }})</span>
+                    </h4>
+                </div>
+
+                {% if blocked_users %}
+                    <div class="cb-friends-grid">
+                        {% for b in blocked_users %}
+                            <div class="cb-friend-card">
+                                <div class="cb-friend-card-cover" style="background: linear-gradient(135deg, #6c757d, #adb5bd);"></div>
+                                <img src="{{ b.blocked.profile.get_avatar_url }}"
+                                     class="cb-friend-card-avatar"
+                                     alt="{{ b.blocked.get_display_name }}"
+                                     onerror="this.src='{% static 'images/default-avatar.svg' %}'">
+                                <div class="cb-friend-card-body">
+                                    <div>
+                                        <div class="fw-bold text-truncate">{{ b.blocked.get_display_name }}</div>
+                                        <div class="text-muted small text-truncate">@{{ b.blocked.username }}</div>
+                                        <div class="text-danger small mt-1">
+                                            <i class="bi bi-slash-circle me-1"></i>Blocked on {{ b.created_at|date:"M d, Y" }}
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                                <i class="bi bi-unlock me-1"></i>Unblock User
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="cb-card text-center p-5 text-muted">
+                        <i class="bi bi-shield-check display-4 mb-3 text-secondary"></i>
+                        <h5>No Blocked Users</h5>
+                        <p class="small text-muted">You haven't blocked any users. Your blocked contacts will be listed here.</p>
+                    </div>
+                {% endif %}
+
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}

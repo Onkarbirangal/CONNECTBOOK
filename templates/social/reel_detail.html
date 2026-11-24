@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reel by {{ reel.author.get_display_name }} | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <!-- Back Link -->
+    <div class="mb-3">
+        <a href="{% url 'social:reels' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to Reels Feed
+        </a>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- 9:16 Vertical Reel Player -->
+        <div class="col-12 col-md-6 d-flex justify-content-center">
+            <div class="position-relative bg-black rounded shadow-lg overflow-hidden" style="width: 100%; max-width: 400px; aspect-ratio: 9/16; min-height: 540px;">
+                <video id="singleReelPlayer" class="w-100 h-100 object-fit-cover" src="{{ reel.video_file.url }}" controls loop playsinline poster="{{ reel.get_thumbnail_url }}"></video>
+
+                <!-- Floating Bottom Creator Banner -->
+                <div class="position-absolute bottom-0 start-0 end-0 p-3 text-white pointer-events-none" style="background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%);">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <img src="{{ reel.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm rounded-circle border border-white" alt="">
+                        <span class="fw-bold">@{{ reel.author.username }}</span>
+                        {% if reel.location %}
+                            <span class="small text-white-50"><i class="bi bi-geo-alt-fill text-danger"></i> {{ reel.location }}</span>
+                        {% endif %}
+                    </div>
+                    {% if reel.caption %}
+                        <div class="small text-white-90 mb-1" style="font-size: 13px;">{{ reel.caption }}</div>
+                    {% endif %}
+                    <div class="small text-white-50" style="font-size: 11px;">
+                        <i class="bi bi-music-note-beamed text-danger"></i> {{ reel.audio_title }} &bull; {{ reel.views_count }} views
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reel Sidebar / Comments / Metadata -->
+        <div class="col-12 col-md-6">
+            <div class="cb-card p-3 mb-3">
+                <!-- Creator Header -->
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+                    <a href="{% url 'accounts:profile' username=reel.author.username %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                        <img src="{{ reel.author.profile.get_avatar_url }}" class="cb-avatar" alt="">
+                        <div>
+                            <div class="fw-bold">{{ reel.author.get_display_name }}</div>
+                            <div class="small text-muted">@{{ reel.author.username }} &bull; {{ reel.created_at|timesince }} ago</div>
+                        </div>
+                    </a>
+                    {% if reel.author != user %}
+                        <form action="{% url 'accounts:toggle_follow' username=reel.author.username %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if is_following %}btn-outline-secondary{% else %}btn-primary{% endif %} rounded-pill px-3">
+                                {% if is_following %}Following{% else %}Follow{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+
+                <!-- Interaction Counters & Action Buttons -->
+                <div class="d-flex align-items-center justify-content-around py-2 mb-3 border-bottom">
+                    <!-- Like Form -->
+                    <form action="{% url 'social:react_reel' reel_id=reel.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-link text-decoration-none text-reset d-flex align-items-center gap-1">
+                            <i class="bi {% if user_liked %}bi-heart-fill text-danger{% else %}bi-heart{% endif %} fs-5"></i>
+                            <span class="fw-semibold">{{ reel.likes_count }}</span>
+                        </button>
+                    </form>
+
+                    <!-- Comments Count -->
+                    <div class="d-flex align-items-center gap-1 text-muted">
+                        <i class="bi bi-chat-dots fs-5"></i>
+                        <span class="fw-semibold">{{ reel.comments_count }}</span>
+                    </div>
+
+                    <!-- Save Form -->
+                    <form action="{% url 'social:toggle_save_reel' reel_id=reel.id %}" method="POST" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-link text-decoration-none text-reset d-flex align-items-center gap-1" title="Save">
+                            <i class="bi {% if user_saved %}bi-bookmark-fill text-warning{% else %}bi-bookmark{% endif %} fs-5"></i>
+                            <span>Save</span>
+                        </button>
+                    </form>
+
+                    <!-- Copy Link -->
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none text-reset d-flex align-items-center gap-1" onclick="copyPostLink(window.location.href)">
+                        <i class="bi bi-share fs-5"></i>
+                        <span>Share</span>
+                    </button>
+                </div>
+
+                <!-- Add Comment Form -->
+                {% if reel.comments_enabled %}
+                    <form action="{% url 'social:add_reel_comment' reel_id=reel.id %}" method="POST" class="mb-3">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input type="text" name="content" class="form-control rounded-start-pill" placeholder="Add a comment..." required autocomplete="off">
+                            <button class="btn btn-primary rounded-end-pill px-3" type="submit">Post</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="alert alert-secondary small py-2 text-center">Comments are disabled on this reel.</div>
+                {% endif %}
+
+                <!-- Comments List -->
+                <h6 class="fw-bold mb-2">Comments ({{ reel.comments_count }})</h6>
+                <div style="max-height: 320px; overflow-y: auto;">
+                    {% if reel.comments.all %}
+                        {% for comment in reel.comments.all %}
+                            <div class="d-flex gap-2 mb-2 p-2 rounded" style="background: var(--cb-bg);">
+                                <a href="{% url 'accounts:profile' username=comment.author.username %}">
+                                    <img src="{{ comment.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                </a>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <a href="{% url 'accounts:profile' username=comment.author.username %}" class="fw-bold small text-decoration-none text-reset">
+                                            {{ comment.author.get_display_name }}
+                                        </a>
+                                        <span class="text-muted" style="font-size: 11px;">{{ comment.created_at|timesince }} ago</span>
+                                    </div>
+                                    <div class="small mt-1">{{ comment.content }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small text-center py-3">No comments yet. Be the first to comment!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

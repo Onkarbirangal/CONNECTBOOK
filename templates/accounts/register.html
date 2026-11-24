@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Up for ConnectBook | Connect with Friends{% endblock %}
+
+{% block content %}
+<div class="container d-flex align-items-center justify-content-center min-vh-100 py-3 py-md-5">
+    <div class="row w-100 justify-content-center align-items-center" style="max-width: 900px;">
+        <div class="col-lg-6 text-center text-lg-start mb-4 mb-lg-0 pe-lg-4">
+            <div class="d-inline-flex align-items-center gap-2 mb-2">
+                <img src="{% static 'images/logo.svg' %}" width="50" height="50" alt="ConnectBook">
+                <h1 class="display-6 display-md-5 fw-bold text-primary m-0" style="color: var(--cb-primary) !important;">ConnectBook</h1>
+            </div>
+            <p class="fs-5 text-muted px-2 px-lg-0">Connect with friends and the world around you on ConnectBook.</p>
+        </div>
+
+        <div class="col-12 col-sm-10 col-md-8 col-lg-6" style="max-width: 440px;">
+            <div class="cb-card shadow-lg p-3 p-sm-4" style="border-radius: 12px;">
+                <h3 class="fw-bold mb-1 fs-4">Create a new account</h3>
+                <p class="text-muted small mb-3">It's quick and easy.</p>
+
+                <form method="POST" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small" style="font-size: 11px;">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small" style="font-size: 11px;">{{ form.last_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small" style="font-size: 11px;">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            <div class="text-danger small" style="font-size: 11px;">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="small text-muted mb-1" style="font-size: 11px;">Date of Birth</label>
+                            {{ form.date_of_birth }}
+                        </div>
+                        <div class="col-6">
+                            <label class="small text-muted mb-1" style="font-size: 11px;">Gender</label>
+                            {{ form.gender }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="password" name="password1" class="form-control" placeholder="New password" required style="font-size: 15px;">
+                        {% if form.password1.errors %}
+                            <div class="text-danger small" style="font-size: 11px;">{{ form.password1.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="password" name="password2" class="form-control" placeholder="Confirm password" required style="font-size: 15px;">
+                        {% if form.password2.errors %}
+                            <div class="text-danger small" style="font-size: 11px;">{{ form.password2.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <p class="text-muted" style="font-size: 11px;">
+                        By clicking Sign Up, you agree to our Terms, Privacy Policy and Cookies Policy.
+                    </p>
+
+                    <button type="submit" class="btn btn-success fw-bold w-100 py-2 fs-5" style="background-color: #42B72A; border-color: #42B72A;">
+                        Sign Up
+                    </button>
+                </form>
+
+                <hr class="my-3">
+
+                <div class="text-center">
+                    <a href="{% url 'accounts:login' %}" class="text-primary fw-bold text-decoration-none small">
+                        Already have an account? Log In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

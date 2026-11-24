@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Post by {{ post.author.get_display_name }} | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="cb-layout">
+    <!-- LEFT SIDEBAR -->
+    {% include 'includes/sidebar_left.html' %}
+
+    <!-- CENTER CONTENT -->
+    <div class="cb-feed-center py-3">
+        <!-- Back Navigation Header -->
+        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+            <a href="{% url 'social:feed' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to Feed
+            </a>
+            <div class="text-muted small">
+                Permalink &bull; {{ post.created_at|date:"M d, Y H:i" }}
+            </div>
+        </div>
+
+        <!-- The Post Card -->
+        {% include 'includes/post_card.html' with post=post %}
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    {% include 'includes/sidebar_right.html' %}
+</div>
+{% endblock %}

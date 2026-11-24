@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ profile_user.get_display_name }}'s {{ list_type }} | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <a href="{% url 'accounts:profile' username=profile_user.username %}" class="btn btn-sm btn-outline-secondary mb-2">
+                <i class="bi bi-arrow-left me-1"></i>Back to {{ profile_user.get_display_name }}'s Profile
+            </a>
+            <h4 class="fw-bold mb-0">{{ list_type }} ({{ user_list.count }})</h4>
+        </div>
+    </div>
+
+    <div class="cb-card p-3">
+        {% if user_list %}
+            <div class="row g-3">
+                {% for u in user_list %}
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center justify-content-between p-2 rounded border" style="border-color: var(--cb-border) !important;">
+                            <div class="d-flex align-items-center gap-3">
+                                <a href="{% url 'accounts:profile' username=u.username %}">
+                                    <img src="{{ u.profile.get_avatar_url }}" class="cb-avatar cb-avatar-md" alt="">
+                                </a>
+                                <div>
+                                    <a href="{% url 'accounts:profile' username=u.username %}" class="fw-bold text-decoration-none" style="color: var(--cb-text);">
+                                        {{ u.get_display_name }}
+                                    </a>
+                                    <div class="text-muted small">@{{ u.username }}</div>
+                                </div>
+                            </div>
+                            <div>
+                                {% if request.user != u %}
+                                    <a href="{% url 'accounts:toggle_follow' username=u.username %}" class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-people fs-2 d-block mb-2"></i>
+                No {{ list_type|lower }} yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

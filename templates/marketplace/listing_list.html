@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketplace | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-shop text-primary me-2"></i>Marketplace</h3>
+            <p class="text-muted small mb-0">Buy and sell items, vehicles, and electronics with people in your community.</p>
+        </div>
+        <div>
+            <a href="{% url 'marketplace:create_listing' %}" class="btn btn-cb-primary fw-semibold">
+                <i class="bi bi-plus-circle me-1"></i>Create New Listing
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Filters Card -->
+    <div class="cb-card p-3 mb-4">
+        <form method="GET" class="row g-2 align-items-center">
+            <input type="hidden" name="tab" value="{{ tab }}">
+            
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--cb-border);"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control border-start-0" placeholder="Search marketplace..." style="border-color: var(--cb-border);">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <select name="category" class="form-select" style="border-color: var(--cb-border);" onchange="this.form.submit()">
+                    <option value="">All Categories</option>
+                    {% for code, label in categories %}
+                        <option value="{{ code }}" {% if selected_category == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <div class="input-group">
+                    <input type="number" name="min_price" value="{{ min_price }}" class="form-control" placeholder="Min $" style="border-color: var(--cb-border);">
+                    <input type="number" name="max_price" value="{{ max_price }}" class="form-control" placeholder="Max $" style="border-color: var(--cb-border);">
+                </div>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-cb-secondary flex-grow-1">Filter</button>
+                {% if query or selected_category or min_price or max_price %}
+                    <a href="{% url 'marketplace:listing_list' %}?tab={{ tab }}" class="btn btn-outline-secondary">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-3 mb-md-4 gap-2 flex-nowrap overflow-x-auto pb-1" style="scrollbar-width: none;">
+        <li class="nav-item flex-shrink-0">
+            <a class="nav-link {% if tab == 'all' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'marketplace:listing_list' %}?tab=all">
+                <i class="bi bi-grid me-1"></i>All Items
+            </a>
+        </li>
+        <li class="nav-item flex-shrink-0">
+            <a class="nav-link {% if tab == 'my_listings' %}active bg-primary{% else %}text-muted{% endif %} rounded-pill px-3" href="{% url 'marketplace:listing_list' %}?tab=my_listings">
+                <i class="bi bi-tag-fill me-1"></i>Your Listings ({{ my_listings_count }})
+            </a>
+        </li>
+    </ul>
+
+    <!-- Listings Grid -->
+    <div class="row g-2 g-md-4">
+        {% for item in listings %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="cb-card h-100 d-flex flex-column overflow-hidden">
+                    <div style="height: 180px; background-image: url('{{ item.get_image_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                        {% if item.status == 'sold' %}
+                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75">
+                                <span class="badge bg-danger fs-6 fw-bold text-uppercase px-3 py-2">SOLD</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="p-3 flex-grow-1 d-flex flex-column">
+                        <div class="fs-5 fw-bold text-primary mb-1">${{ item.price|floatformat:2 }}</div>
+                        <h6 class="fw-semibold mb-1 text-truncate">
+                            <a href="{% url 'marketplace:listing_detail' pk=item.pk %}" class="text-decoration-none" style="color: var(--cb-text);">
+                                {{ item.title }}
+                            </a>
+                        </h6>
+                        <div class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</div>
+                        <div class="mt-auto">
+                            <a href="{% url 'marketplace:listing_detail' pk=item.pk %}" class="btn btn-sm btn-outline-primary w-100">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-shop-window text-muted fs-1 d-block mb-3"></i>
+                <h5 class="text-muted">No listings match your search criteria.</h5>
+                <a href="{% url 'marketplace:create_listing' %}" class="btn btn-cb-primary mt-2">Sell an item</a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Group | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 650px;">
+    <div class="cb-card p-4">
+        <h4 class="fw-bold mb-3"><i class="bi bi-collection-fill text-info me-2"></i>Create New Group</h4>
+        <p class="text-muted small mb-4">Groups are great for getting things done and staying in touch with people who share your interests.</p>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Group Name</label>
+                <input type="text" name="name" class="form-control" placeholder="Name your group..." required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Description</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Describe the purpose of this community..."></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Privacy</label>
+                <select name="privacy" class="form-select">
+                    <option value="public">Public – Anyone can see who's in the group and what they post</option>
+                    <option value="private">Private – Only members can see who's in the group and what they post</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold">Cover Photo</label>
+                <input type="file" name="cover_photo" class="form-control" accept="image/*">
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'groups_app:list' %}" class="btn btn-cb-secondary">Cancel</a>
+                <button type="submit" class="btn btn-cb-primary">Create Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

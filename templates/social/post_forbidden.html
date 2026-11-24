@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Content Not Available | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center" style="max-width: 550px;">
+    <div class="cb-card p-4 shadow-sm">
+        <div class="mb-3 text-warning">
+            <i class="bi bi-shield-lock-fill" style="font-size: 3.5rem;"></i>
+        </div>
+        <h4 class="fw-bold mb-2">This Content Isn't Available Right Now</h4>
+        <p class="text-muted mb-4">
+            When this happens, it's usually because the owner only shared it with a small group of people, changed who can see it, or it's been deleted.
+        </p>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="{% url 'social:feed' %}" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-house-door-fill me-1"></i> Go to News Feed
+            </a>
+            <a href="javascript:history.back()" class="btn btn-outline-secondary rounded-pill px-3">
+                Go Back
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

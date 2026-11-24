@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Account Security Center | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4 px-2 px-md-3" style="max-width: 850px;">
+    <!-- Navigation Tabs -->
+    <div class="cb-feed-tabs mb-4 p-0">
+        <a href="{% url 'accounts:settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-gear-fill me-1"></i>General</a>
+        <a href="{% url 'accounts:privacy_settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-shield-check me-1"></i>Privacy Center</a>
+        <a href="{% url 'accounts:security_settings' %}" class="btn btn-cb-primary btn-sm rounded-pill"><i class="bi bi-shield-lock me-1"></i>Security & Sessions</a>
+        <a href="{% url 'accounts:your_information' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-download me-1"></i>Your Information</a>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h3 class="fw-bold mb-1 fs-4 fs-md-3"><i class="bi bi-shield-lock text-primary me-2"></i>Account Security Center</h3>
+            <p class="text-muted small mb-0">Manage your password, login security, and active authenticated sessions.</p>
+        </div>
+    </div>
+
+    <!-- Active Sessions & Login Activity -->
+    <div class="cb-card p-3 p-md-4 mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+                <h5 class="fw-bold mb-0"><i class="bi bi-laptop text-primary me-2"></i>Active Sessions & Devices</h5>
+                <span class="text-muted small">Where you are currently logged in</span>
+            </div>
+            <div class="d-flex gap-2">
+                <form method="POST" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="logout_other_sessions" value="1">
+                    <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('Are you sure you want to log out all other devices?');">
+                        <i class="bi bi-box-arrow-right me-1"></i>Log Out Other Sessions
+                    </button>
+                </form>
+                <form method="POST" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="logout_all_sessions" value="1">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to log out of all devices including this one?');">
+                        <i class="bi bi-power me-1"></i>Log Out Everywhere
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="list-group">
+            {% for s in active_sessions %}
+                <div class="list-group-item d-flex align-items-center justify-content-between py-3" style="background: var(--cb-card); color: var(--cb-text); border-color: var(--cb-border);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle p-2 bg-light dark-bg-secondary text-primary fs-4">
+                            {% if "Mobile" in s.device_type %}
+                                <i class="bi bi-phone"></i>
+                            {% else %}
+                                <i class="bi bi-display"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="fw-bold d-flex align-items-center gap-2">
+                                {{ s.device_type|default:"Web Browser" }}
+                                {% if s.session_key == current_key %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle small">Current Session</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-muted small">
+                                <span>IP: {{ s.ip_address|default:"127.0.0.1" }}</span> • 
+                                <span>Last active: {{ s.last_activity|timesince }} ago</span>
+                            </div>
+                            <div class="text-muted small text-truncate" style="max-width: 450px;">
+                                {{ s.user_agent }}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary-subtle text-primary"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-muted small mb-0 p-3">No recorded active sessions.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Password Change -->
+    <div class="cb-card p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-key-fill text-primary me-2"></i>Change Password</h5>
+        <p class="text-muted small mb-3">Choose a strong, unique password to protect your ConnectBook account.</p>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="change_password" value="1">
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Current Password</label>
+                {{ password_form.old_password }}
+                {% if password_form.old_password.errors %}
+                    <div class="text-danger small mt-1">{{ password_form.old_password.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">New Password</label>
+                    {{ password_form.new_password1 }}
+                    {% if password_form.new_password1.errors %}
+                        <div class="text-danger small mt-1">{{ password_form.new_password1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Confirm New Password</label>
+                    {{ password_form.new_password2 }}
+                    {% if password_form.new_password2.errors %}
+                        <div class="text-danger small mt-1">{{ password_form.new_password2.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-cb-primary px-4 fw-semibold">Update Password</button>
+        </form>
+    </div>
+
+    <!-- Deactivation and Deletion Shortcuts -->
+    <div class="cb-card p-4 border-danger">
+        <h5 class="fw-bold text-danger mb-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>Account Status & Deactivation</h5>
+        <p class="text-muted small mb-3">Temporarily deactivate your profile or permanently schedule deletion from the User Data Control center.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'accounts:deactivate' %}" class="btn btn-outline-danger btn-sm">Deactivate Account</a>
+            <a href="{% url 'accounts:your_information' %}#deletion" class="btn btn-outline-secondary btn-sm">Schedule Deletion in Data Control</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

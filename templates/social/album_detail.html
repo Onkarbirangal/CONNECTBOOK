@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ album.title }} | ConnectBook Albums{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 1050px;">
+    <!-- Album Header Card -->
+    <div class="cb-card p-4 shadow-sm border mb-4" style="border-radius: 12px; background: var(--cb-card);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-3 border-bottom mb-3" style="border-color: var(--cb-border) !important;">
+            <div>
+                <a href="{% url 'accounts:profile' username=album.user.username %}?tab=photos&subtab=albums" class="text-muted small text-decoration-none">
+                    <i class="bi bi-chevron-left me-1"></i> Back to {{ album.user.get_display_name }}'s Albums
+                </a>
+                <h3 class="fw-bold mb-1 mt-2">{{ album.title }}</h3>
+                <div class="text-muted small">
+                    By <a href="{% url 'accounts:profile' username=album.user.username %}" class="fw-bold text-decoration-none text-reset">{{ album.user.get_display_name }}</a> &bull;
+                    <span>{{ photos|length }} photo{{ photos|length|pluralize }}</span> &bull;
+                    {% if album.privacy == 'public' %}
+                        <i class="bi bi-globe" title="Public"></i>
+                    {% elif album.privacy == 'friends' %}
+                        <i class="bi bi-people-fill" title="Friends Only"></i>
+                    {% else %}
+                        <i class="bi bi-lock-fill" title="Only Me"></i>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if is_owner %}
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-cb-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#uploadPhotosModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add Photos
+                    </button>
+                    <a href="{% url 'social:edit_album' album_id=album.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                    <form action="{% url 'social:delete_album' album_id=album.id %}" method="POST" onsubmit="return confirm('Delete this entire album and its photos?');" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                            <i class="bi bi-trash me-1"></i> Delete
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if album.description %}
+            <p class="text-muted mb-0 small">{{ album.description }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Photos Grid -->
+    <div class="cb-card p-3 p-md-4 shadow-sm border" style="border-radius: 12px; background: var(--cb-card);">
+        <div class="row g-2 g-md-3">
+            {% if photos %}
+                {% for p in photos %}
+                    <div class="col-6 col-sm-4 col-md-3">
+                        <div class="position-relative overflow-hidden rounded shadow-sm group-hover h-100" style="background: var(--cb-bg);">
+                            <img src="{{ p.image.url }}" class="w-100" style="height: 180px; object-fit: cover; cursor: pointer;" alt="{{ p.caption|default:'Photo' }}" onclick="openAlbumLightbox('{{ p.image.url }}', '{{ p.caption|default:'' }}')">
+                            {% if p.caption %}
+                                <div class="p-2 small text-truncate">{{ p.caption }}</div>
+                            {% endif %}
+                            {% if is_owner %}
+                                <form action="{% url 'social:delete_album_photo' photo_id=p.id %}" method="POST" onsubmit="return confirm('Delete this photo?');" class="position-absolute top-0 end-0 m-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-dark bg-opacity-75 text-white rounded-circle p-1" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;" title="Delete Photo">
+                                        <i class="bi bi-x-lg" style="font-size: 11px;"></i>
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center text-muted py-5">
+                    <i class="bi bi-images fs-1 text-muted mb-2 d-block"></i>
+                    <h5>No photos in this album yet</h5>
+                    {% if is_owner %}
+                        <button class="btn btn-sm btn-cb-primary rounded-pill px-4 mt-2" data-bs-toggle="modal" data-bs-target="#uploadPhotosModal">
+                            <i class="bi bi-plus-lg me-1"></i> Add Your First Photo
+                        </button>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Upload Photos to Album -->
+{% if is_owner %}
+<div class="modal fade" id="uploadPhotosModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="background: var(--cb-card); color: var(--cb-text);">
+            <div class="modal-header border-bottom" style="border-color: var(--cb-border) !important;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-upload text-primary me-2"></i>Add Photos to Album</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'social:upload_album_photo' album_id=album.id %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Images <span class="text-danger">*</span></label>
+                        <input type="file" name="images" accept="image/*" multiple class="form-control" required>
+                        <div class="form-text small">You can select multiple images at once.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Caption (Optional)</label>
+                        <input type="text" name="caption" class="form-control" placeholder="Add a caption for these photos...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Alt Text (Accessibility)</label>
+                        <input type="text" name="alt_text" class="form-control" placeholder="Brief visual description...">
+                    </div>
+                </div>
+                <div class="modal-footer border-top" style="border-color: var(--cb-border) !important;">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-cb-primary rounded-pill px-4">Upload Photos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function openAlbumLightbox(src, caption) {
+    const modal = document.getElementById('cbLightboxModal');
+    if (!modal) return;
+    window.lightboxState = {
+        postId: null,
+        images: [{ src: src, caption: caption, alt: 'Photo' }],
+        currentIndex: 0
+    };
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    const imgEl = document.getElementById('cbLightboxImage');
+    const counterEl = document.getElementById('cbLightboxCounter');
+    const captionEl = document.getElementById('cbLightboxCaption');
+    const downloadEl = document.getElementById('cbLightboxDownloadBtn');
+    if (imgEl) imgEl.src = src;
+    if (counterEl) counterEl.textContent = '1 / 1';
+    if (downloadEl) downloadEl.href = src;
+    if (captionEl) {
+        if (caption) {
+            captionEl.textContent = caption;
+            captionEl.style.display = 'block';
+        } else {
+            captionEl.style.display = 'none';
+        }
+    }
+}
+</script>
+{% endblock %}

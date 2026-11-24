@@ -1,0 +1,20 @@
+<!-- Mobile Search Overlay Modal -->
+<div class="modal fade" id="mobileSearchModal" tabindex="-1" aria-labelledby="mobileSearchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+        <div class="modal-content" style="background: var(--cb-card); color: var(--cb-text);">
+            <div class="modal-header border-bottom p-2">
+                <div class="d-flex align-items-center gap-2 w-100">
+                    <button type="button" class="btn btn-sm btn-cb-secondary rounded-circle" data-bs-dismiss="modal">
+                        <i class="bi bi-arrow-left fs-5"></i>
+                    </button>
+                    <div class="flex-grow-1 position-relative">
+                        <input type="text" id="mobileSearchInput" class="form-control rounded-pill ps-4" placeholder="Search ConnectBook..." autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body p-2" id="mobileSearchResults">
+                <div class="p-4 text-center text-muted small">Type to search people, groups, and posts...</div>
+            </div>
+        </div>
+    </div>
+</div>

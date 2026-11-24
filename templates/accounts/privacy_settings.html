@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Privacy Center | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4 px-2 px-md-3" style="max-width: 850px;">
+    <!-- Navigation Tabs -->
+    <div class="cb-feed-tabs mb-4 p-0">
+        <a href="{% url 'accounts:settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-gear-fill me-1"></i>General</a>
+        <a href="{% url 'accounts:privacy_settings' %}" class="btn btn-cb-primary btn-sm rounded-pill"><i class="bi bi-shield-check me-1"></i>Privacy Center</a>
+        <a href="{% url 'accounts:security_settings' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-shield-lock me-1"></i>Security & Sessions</a>
+        <a href="{% url 'accounts:your_information' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-download me-1"></i>Your Information</a>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h3 class="fw-bold mb-1 fs-4 fs-md-3"><i class="bi bi-shield-check text-primary me-2"></i>Privacy Center</h3>
+            <p class="text-muted small mb-0">Control who can see your profile, your posts, your stories, and who can contact you.</p>
+        </div>
+    </div>
+
+    <!-- Privacy Settings Form -->
+    <form method="POST" class="cb-card p-3 p-md-4 mb-4">
+        {% csrf_token %}
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Audience & Content Privacy</h5>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Default Post Audience</label>
+                {{ form.post_default_audience }}
+                <div class="form-text">Choose who can view your new posts by default.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Story Privacy</label>
+                {{ form.story_privacy }}
+                <div class="form-text">Choose who can see your 24-hour stories.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Profile Visibility</label>
+                {{ form.profile_visibility }}
+                <div class="form-text">Who can see your profile details and full timeline.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Friends List Visibility</label>
+                {{ form.friends_list_visibility }}
+                <div class="form-text">Who can see your complete list of friends.</div>
+            </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Connections & Messaging</h5>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Who can send you friend requests?</label>
+                {{ form.friend_request_permission }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Who can send you direct messages?</label>
+                {{ form.message_permission }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Who can tag you in posts?</label>
+                {{ form.tagging_permission }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Who can mention you in comments?</label>
+                {{ form.mention_permission }}
+            </div>
+        </div>
+
+        <h5 class="fw-bold mb-3 border-bottom pb-2">Activity & Discoverability</h5>
+        <div class="vstack gap-3 mb-4">
+            <div class="form-check form-switch">
+                {{ form.search_discoverability }}
+                <label class="form-check-label fw-semibold ms-2" for="{{ form.search_discoverability.id_for_label }}">
+                    Search Discoverability
+                </label>
+                <div class="form-text ms-2">Allow other users to find your profile via search bar queries.</div>
+            </div>
+
+            <div class="form-check form-switch">
+                {{ form.online_status_visible }}
+                <label class="form-check-label fw-semibold ms-2" for="{{ form.online_status_visible.id_for_label }}">
+                    Show Active Status
+                </label>
+                <div class="form-text ms-2">Allow friends to see when you are active on ConnectBook.</div>
+            </div>
+
+            <div class="form-check form-switch">
+                {{ form.read_receipts }}
+                <label class="form-check-label fw-semibold ms-2" for="{{ form.read_receipts.id_for_label }}">
+                    Read Receipts
+                </label>
+                <div class="form-text ms-2">Send and receive message read status in Messenger.</div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-cb-primary px-4 fw-semibold">
+                <i class="bi bi-check2-circle me-1"></i>Save Privacy Settings
+            </button>
+        </div>
+    </form>
+
+    <!-- Blocked Users Section -->
+    <div class="cb-card p-4">
+        <h5 class="fw-bold mb-2"><i class="bi bi-slash-circle-fill text-danger me-2"></i>Blocked Users</h5>
+        <p class="text-muted small mb-3">Once you block someone, that person can no longer see your posts, send friend requests, or message you.</p>
+        
+        {% if blocked_users %}
+            <div class="list-group">
+                {% for b in blocked_users %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between" style="background: var(--cb-card); color: var(--cb-text); border-color: var(--cb-border);">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ b.blocked.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <div>
+                                <span class="fw-bold">{{ b.blocked.get_display_name }}</span>
+                                <span class="text-muted small">(@{{ b.blocked.username }})</span>
+                            </div>
+                        </div>
+                        <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Unblock</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-muted small p-3 rounded bg-light dark-bg-secondary text-center">
+                <i class="bi bi-shield-slash text-muted fs-4 d-block mb-1"></i>
+                You have not blocked any users.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Restricted Users Section -->
+    <div class="cb-card p-4 mt-4">
+        <h5 class="fw-bold mb-2"><i class="bi bi-person-slash text-warning me-2"></i>Restricted Accounts</h5>
+        <p class="text-muted small mb-3">Restricted users can only see your public posts and cannot see when you're online or read their messages.</p>
+        {% if restricted_users %}
+            <div class="list-group">
+                {% for r in restricted_users %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between" style="background: var(--cb-card); color: var(--cb-text); border-color: var(--cb-border);">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ r.restricted_user.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <div>
+                                <span class="fw-bold">{{ r.restricted_user.get_display_name }}</span>
+                                <span class="text-muted small">(@{{ r.restricted_user.username }})</span>
+                            </div>
+                        </div>
+                        <form action="{% url 'accounts:toggle_restrict' user_id=r.restricted_user.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Unrestrict</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-muted small p-3 rounded bg-light dark-bg-secondary text-center">
+                <i class="bi bi-person-check text-muted fs-4 d-block mb-1"></i>
+                No restricted accounts.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Muted Users Section -->
+    <div class="cb-card p-4 mt-4">
+        <h5 class="fw-bold mb-2"><i class="bi bi-bell-slash text-secondary me-2"></i>Muted Accounts</h5>
+        <p class="text-muted small mb-3">You will not receive notifications from muted accounts.</p>
+        {% if muted_users %}
+            <div class="list-group">
+                {% for m in muted_users %}
+                    <div class="list-group-item d-flex align-items-center justify-content-between" style="background: var(--cb-card); color: var(--cb-text); border-color: var(--cb-border);">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="{{ m.muted_user.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                            <div>
+                                <span class="fw-bold">{{ m.muted_user.get_display_name }}</span>
+                                <span class="text-muted small">(@{{ m.muted_user.username }})</span>
+                            </div>
+                        </div>
+                        <form action="{% url 'accounts:toggle_mute' user_id=m.muted_user.id %}" method="POST" class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Unmute</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-muted small p-3 rounded bg-light dark-bg-secondary text-center">
+                <i class="bi bi-bell text-muted fs-4 d-block mb-1"></i>
+                No muted accounts.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ stream.title }} | ConnectBook Live{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stream-stage {
+    position: relative;
+    background: #020617;
+    border-radius: 14px;
+    height: 480px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  }
+
+  .stage-overlay-top {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+  }
+
+  .reaction-float-container {
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    height: 300px;
+    width: 80px;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 15;
+  }
+
+  .floating-emoji {
+    position: absolute;
+    bottom: 0;
+    right: 20px;
+    font-size: 28px;
+    animation: floatUp 2.4s ease-out forwards;
+    opacity: 1;
+  }
+
+  @keyframes floatUp {
+    0% {
+      transform: translateY(0) scale(0.6);
+      opacity: 0.8;
+    }
+    50% {
+      transform: translateY(-120px) scale(1.2) translateX(-15px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-260px) scale(1) translateX(10px);
+      opacity: 0;
+    }
+  }
+
+  .chat-sidebar {
+    height: 580px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--cb-bg, #f8fafc);
+  }
+
+  .reaction-pill-btn {
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    font-size: 20px;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    transition: transform 0.15s ease;
+  }
+  .reaction-pill-btn:hover {
+    transform: scale(1.25);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-3" style="max-width: 1400px;">
+  <div class="mb-3 d-flex justify-content-between align-items-center">
+    <a href="{% url 'streaming:stream_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back to Live Streams
+    </a>
+
+    {% if can_manage %}
+      <a href="{% url 'streaming:stream_dashboard' pk=stream.pk %}" class="btn btn-danger btn-sm fw-bold">
+        <i class="bi bi-sliders me-1"></i>Open Broadcaster Studio
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="row g-3">
+    <!-- Left Column: Video Screen & Metadata -->
+    <div class="col-lg-8">
+      <div class="stream-stage" id="streamStage">
+        <!-- Top Overlay -->
+        <div class="stage-overlay-top">
+          <div>
+            {% if stream.status == 'live' %}
+              <span class="badge bg-danger fs-6 px-3 py-1">
+                <i class="bi bi-record-fill me-1 animate-pulse"></i>LIVE
+              </span>
+            {% elif stream.status == 'scheduled' %}
+              <span class="badge bg-primary fs-6 px-3 py-1">SCHEDULED</span>
+            {% else %}
+              <span class="badge bg-secondary fs-6 px-3 py-1">ENDED</span>
+            {% endif %}
+            <span class="badge bg-dark bg-opacity-75 ms-1">{{ stream.get_category_display }}</span>
+          </div>
+
+          <span class="badge bg-dark bg-opacity-75 px-3 py-2 fs-6">
+            <i class="bi bi-eye-fill text-danger me-1"></i>
+            <span id="viewerCounter">{{ stream.viewer_count }}</span> watching
+          </span>
+        </div>
+
+        <!-- Video Player Display -->
+        {% if stream.hls_playback_url and stream.status == 'live' %}
+          <video id="hlsVideo" controls autoplay playsinline class="w-100 h-100" style="object-fit: contain;">
+            <source src="{{ stream.hls_playback_url }}" type="application/x-mpegURL">
+          </video>
+        {% else %}
+          <div class="text-center p-4 text-white">
+            {% if stream.status == 'live' %}
+              <div class="spinner-grow text-danger mb-3" style="width: 3.5rem; height: 3.5rem;" role="status"></div>
+              <h3 class="fw-bold mb-1">{{ stream.title }}</h3>
+              <p class="text-white-50 mb-0">Live broadcast in progress &bull; Hosted by @{{ stream.host.username }}</p>
+            {% elif stream.status == 'scheduled' %}
+              <i class="bi bi-calendar-check text-primary fs-1 d-block mb-3"></i>
+              <h3 class="fw-bold mb-2">{{ stream.title }}</h3>
+              <p class="text-white-50 mb-1">Scheduled to go live on:</p>
+              <h5 class="fw-semibold text-warning mb-0">{{ stream.scheduled_start|date:"l, F d, Y • h:i A" }}</h5>
+            {% else %}
+              <i class="bi bi-stop-circle text-secondary fs-1 d-block mb-3"></i>
+              <h3 class="fw-bold mb-1">{{ stream.title }}</h3>
+              <p class="text-white-50 mb-0">This live stream has ended. Thank you for watching!</p>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Floating Reactions Container -->
+        <div class="reaction-float-container" id="reactionFloatContainer"></div>
+      </div>
+
+      <!-- Quick Reactions Bar on Player -->
+      <div class="d-flex align-items-center justify-content-between p-2 mt-2 cb-card">
+        <div class="d-flex align-items-center gap-2">
+          <span class="small fw-semibold text-muted me-1">Send Reaction:</span>
+          <button class="reaction-pill-btn" onclick="sendReaction('❤️')" title="Love">❤️</button>
+          <button class="reaction-pill-btn" onclick="sendReaction('🔥')" title="Fire">🔥</button>
+          <button class="reaction-pill-btn" onclick="sendReaction('👏')" title="Clap">👏</button>
+          <button class="reaction-pill-btn" onclick="sendReaction('😮')" title="Wow">😮</button>
+          <button class="reaction-pill-btn" onclick="sendReaction('👍')" title="Like">👍</button>
+        </div>
+        <div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText(window.location.href); alert('Stream link copied to clipboard!');">
+            <i class="bi bi-share me-1"></i>Share
+          </button>
+        </div>
+      </div>
+
+      <!-- Stream Details Card -->
+      <div class="cb-card p-3 mt-3">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'accounts:profile' username=stream.host.username %}">
+              <img src="{{ stream.host.profile.get_avatar_url }}" alt="{{ stream.host.get_display_name }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
+            </a>
+            <div>
+              <h5 class="fw-bold mb-0">{{ stream.title }}</h5>
+              <div class="small text-muted">
+                Hosted by <a href="{% url 'accounts:profile' username=stream.host.username %}" class="fw-bold text-decoration-none">@{{ stream.host.username }}</a>
+                &bull; Started {{ stream.actual_start|default:stream.scheduled_start|timesince }} ago
+              </div>
+            </div>
+          </div>
+
+          {% if user.is_authenticated and user != stream.host %}
+            <a href="{% url 'accounts:profile' username=stream.host.username %}" class="btn btn-sm btn-cb-primary">
+              <i class="bi bi-person-plus-fill me-1"></i>Follow Host
+            </a>
+          {% endif %}
+        </div>
+
+        {% if stream.description %}
+          <p class="text-secondary mb-0 small">{{ stream.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Real-Time Live Chat -->
+    <div class="col-lg-4">
+      <div class="cb-card chat-sidebar p-3">
+        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom mb-2">
+          <h6 class="fw-bold mb-0">
+            <i class="bi bi-chat-quote-fill text-danger me-2"></i>Live Stream Chat
+          </h6>
+          <span class="badge bg-success-subtle text-success small">Real-Time</span>
+        </div>
+
+        <!-- Chat Feed -->
+        <div class="chat-messages-container rounded border mb-2" id="liveChatFeed">
+          <div class="p-2 rounded bg-light border-start border-3 border-danger mb-2 small text-muted">
+            <i class="bi bi-info-circle me-1 text-danger"></i> Welcome to the live chat! Keep conversations positive and respectful.
+          </div>
+
+          {% for m in chat_messages %}
+            <div class="mb-2 p-2 rounded bg-white shadow-sm border-start border-3 {% if m.sender == stream.host %}border-danger{% else %}border-primary{% endif %}" id="viewerChatMsg-{{ m.id }}">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold small {% if m.sender == stream.host %}text-danger{% else %}text-primary{% endif %}">
+                  {% if m.sender == stream.host %}<span class="badge bg-danger text-white me-1">Host</span>{% endif %}
+                  {{ m.sender.get_display_name }}
+                </span>
+                <span class="text-muted" style="font-size: 10px;">{{ m.created_at|date:"H:i" }}</span>
+              </div>
+              <div class="small text-break">{{ m.message }}</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Chat Input -->
+        {% if user.is_authenticated %}
+          <div class="input-group">
+            <input type="text" class="form-control" id="viewerChatInput" placeholder="Say something in chat..." maxlength="500" {% if stream.status == 'ended' %}disabled{% endif %}>
+            <button class="btn btn-danger" type="button" id="btnSendViewerChat" {% if stream.status == 'ended' %}disabled{% endif %}>
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        {% else %}
+          <div class="text-center py-2 bg-light rounded small">
+            <a href="{% url 'accounts:login' %}" class="fw-bold text-decoration-none">Log in</a> to join the live stream chat.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const STREAM_ID = {{ stream.id }};
+    const IS_AUTHENTICATED = {{ user.is_authenticated|yesno:"true,false" }};
+    const HOST_USERNAME = "{{ stream.host.username }}";
+
+    const chatFeed = document.getElementById('liveChatFeed');
+    const chatInput = document.getElementById('viewerChatInput');
+    const btnSend = document.getElementById('btnSendViewerChat');
+    const viewerCountSpan = document.getElementById('viewerCounter');
+    const reactionContainer = document.getElementById('reactionFloatContainer');
+
+    // WebSocket Connection
+    const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsUrl = wsScheme + window.location.host + '/ws/live/' + STREAM_ID + '/';
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'viewer_count_update') {
+          if (viewerCountSpan) viewerCountSpan.textContent = data.viewer_count;
+        } else if (data.type === 'stream_chat_message') {
+          appendChatMessage(data);
+        } else if (data.type === 'stream_reaction') {
+          triggerFloatingEmoji(data.reaction);
+        } else if (data.type === 'stream_message_deleted') {
+          const el = document.getElementById('viewerChatMsg-' + data.message_id);
+          if (el) el.remove();
+        }
+      } catch (err) {
+        console.error("WS parse error:", err);
+      }
+    };
+
+    function appendChatMessage(msg) {
+      const div = document.createElement('div');
+      div.id = 'viewerChatMsg-' + msg.id;
+      div.className = 'mb-2 p-2 rounded bg-white shadow-sm border-start border-3 ' + (msg.sender_name === '{{ stream.host.get_display_name }}' ? 'border-danger' : 'border-primary');
+      div.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="fw-bold small ${msg.sender_name === '{{ stream.host.get_display_name }}' ? 'text-danger' : 'text-primary'}">
+            ${msg.sender_name}
+          </span>
+          <span class="text-muted" style="font-size: 10px;">${msg.created_at}</span>
+        </div>
+        <div class="small text-break">${escapeHtml(msg.message)}</div>
+      `;
+      chatFeed.appendChild(div);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function sendChatMessage() {
+      if (!chatInput) return;
+      const text = chatInput.value.trim();
+      if (!text || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        action: 'chat',
+        message: text
+      }));
+      chatInput.value = '';
+    }
+
+    if (btnSend) btnSend.addEventListener('click', sendChatMessage);
+    if (chatInput) {
+      chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+      });
+    }
+
+    // Reaction Trigger
+    window.sendReaction = function(emoji) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: 'reaction',
+          reaction: emoji
+        }));
+      }
+      triggerFloatingEmoji(emoji);
+    };
+
+    function triggerFloatingEmoji(emoji) {
+      if (!reactionContainer) return;
+      const span = document.createElement('span');
+      span.className = 'floating-emoji';
+      span.textContent = emoji;
+      span.style.left = Math.floor(Math.random() * 40) + 'px';
+      reactionContainer.appendChild(span);
+      setTimeout(() => {
+        span.remove();
+      }, 2500);
+    }
+
+    // Scroll chat to bottom on load
+    if (chatFeed) {
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+  })();
+</script>
+{% endblock %}

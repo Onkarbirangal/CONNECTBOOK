@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Explore & Discover | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 1200px;">
+  <!-- Explore Header & Search -->
+  <div class="cb-card p-4 mb-4 text-center" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white;">
+    <h2 class="fw-bold mb-2"><i class="bi bi-compass me-2"></i>Explore ConnectBook</h2>
+    <p class="text-white-50 mb-3" style="max-width: 600px; margin: 0 auto;">
+      Discover what's trending across videos, reels, community creators, live streams, and conversations.
+    </p>
+
+    <!-- Trending Hashtags Pills -->
+    {% if trending_hashtags %}
+      <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+        {% for tag in trending_hashtags %}
+          <a href="{% url 'social:feed' %}?hashtag={{ tag.name|slice:'1:' }}" class="btn btn-sm btn-light bg-opacity-25 text-white border-0 rounded-pill px-3 py-1">
+            #{{ tag.name|cut:'#' }}
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Active Live Streams Section -->
+  {% if live_streams %}
+    <div class="mb-5">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0 d-flex align-items-center gap-2">
+          <span class="badge bg-danger rounded-circle p-1" style="width: 10px; height: 10px;"></span>
+          Happening Live Right Now
+        </h4>
+        <a href="{% url 'streaming:stream_list' %}" class="btn btn-sm btn-outline-danger">View All Live</a>
+      </div>
+
+      <div class="row g-3">
+        {% for s in live_streams %}
+          <div class="col-md-6 col-lg-3">
+            <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm">
+              <div style="height: 150px; background-image: url('{{ s.get_thumbnail_url }}'); background-size: cover; background-position: center;" class="position-relative">
+                <span class="badge bg-danger position-absolute top-0 start-0 m-2"><i class="bi bi-record-fill me-1"></i>LIVE</span>
+                <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">{{ s.viewer_count }} watching</span>
+              </div>
+              <div class="p-3 flex-grow-1 d-flex flex-column">
+                <h6 class="fw-bold mb-1 text-truncate">
+                  <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="text-decoration-none text-dark">{{ s.title }}</a>
+                </h6>
+                <small class="text-muted mb-2">@{{ s.host.username }}</small>
+                <div class="mt-auto">
+                  <a href="{% url 'streaming:stream_room' pk=s.pk %}" class="btn btn-danger btn-sm w-100 fw-semibold">
+                    Watch Stream
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Popular Reels Section -->
+  <div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="fw-bold mb-0"><i class="bi bi-film text-danger me-2"></i>Trending Reels</h4>
+      <a href="{% url 'social:reels' %}" class="btn btn-sm btn-outline-primary">Watch Reels</a>
+    </div>
+
+    <div class="row g-3">
+      {% for r in popular_reels %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm position-relative">
+            <a href="{% url 'social:reels' %}" class="text-decoration-none text-white">
+              <div class="position-relative bg-dark" style="height: 240px; background-image: url('{{ r.get_thumbnail_url }}'); background-size: cover; background-position: center;">
+                <div class="position-absolute top-0 start-0 w-100 h-100 bg-black bg-opacity-25 d-flex align-items-center justify-content-center opacity-0 hover-opacity-100 transition">
+                  <i class="bi bi-play-circle-fill fs-1 text-white"></i>
+                </div>
+                <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">
+                  <i class="bi bi-eye me-1"></i>{{ r.views_count }}
+                </span>
+                <div class="position-absolute bottom-0 start-0 w-100 p-2 bg-gradient">
+                  <div class="small fw-semibold text-truncate">{{ r.caption|default:"Reel" }}</div>
+                  <div class="text-white-50" style="font-size: 11px;">@{{ r.author.username }}</div>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center text-muted py-3">No trending reels yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Popular Long-Form Videos Section -->
+  <div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4 class="fw-bold mb-0"><i class="bi bi-camera-video-fill text-primary me-2"></i>Popular Videos</h4>
+      <a href="{% url 'social:video_feed' %}" class="btn btn-sm btn-outline-primary">Browse All Videos</a>
+    </div>
+
+    <div class="row g-4">
+      {% for v in popular_videos %}
+        <div class="col-md-6 col-lg-4">
+          <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm">
+            <a href="{% url 'social:video_detail' video_id=v.id %}" class="position-relative d-block">
+              <div style="height: 190px; background-image: url('{{ v.get_thumbnail_url }}'); background-size: cover; background-position: center;"></div>
+              <span class="badge bg-dark position-absolute bottom-0 end-0 m-2">{{ v.duration_formatted }}</span>
+            </a>
+            <div class="p-3 flex-grow-1 d-flex flex-column">
+              <h5 class="fw-bold mb-1">
+                <a href="{% url 'social:video_detail' video_id=v.id %}" class="text-decoration-none text-dark">{{ v.title|truncatechars:50 }}</a>
+              </h5>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <a href="{% url 'accounts:profile' username=v.author.username %}">
+                  <img src="{{ v.author.profile.get_avatar_url }}" class="rounded-circle" style="width: 24px; height: 24px; object-fit: cover;" alt="">
+                </a>
+                <small class="text-muted">@{{ v.author.username }} &bull; {{ v.views_count }} views</small>
+              </div>
+              {% if v.description %}
+                <p class="text-muted small mb-0">{{ v.description|truncatechars:80 }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12 text-center text-muted py-3">No videos available.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Recommended Creators & Influencers -->
+  {% if suggested_creators %}
+    <div class="mb-4">
+      <h4 class="fw-bold mb-3"><i class="bi bi-people-fill text-info me-2"></i>Discover Creators</h4>
+      <div class="row g-3">
+        {% for creator in suggested_creators %}
+          <div class="col-md-4 col-lg-2 col-6">
+            <div class="cb-card text-center p-3 h-100 shadow-sm d-flex flex-column align-items-center">
+              <a href="{% url 'accounts:profile' username=creator.username %}">
+                <img src="{{ creator.profile.get_avatar_url }}" class="rounded-circle mb-2" style="width: 64px; height: 64px; object-fit: cover;" alt="">
+              </a>
+              <h6 class="fw-bold mb-0 text-truncate w-100">
+                <a href="{% url 'accounts:profile' username=creator.username %}" class="text-decoration-none text-dark">
+                  {{ creator.get_display_name }}
+                </a>
+              </h6>
+              <small class="text-muted mb-3 d-block">@{{ creator.username }}</small>
+              <div class="mt-auto w-100">
+                <a href="{% url 'accounts:profile' username=creator.username %}" class="btn btn-sm btn-outline-primary w-100">
+                  View Profile
+                </a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Messenger | ConnectBook{% endblock %}
+
+{% block extra_css %}
+{% if active_conversation %}
+<style>
+  @media (max-width: 767.98px) {
+    body.has-bottom-nav {
+      padding-bottom: 0 !important;
+    }
+    .cb-bottom-nav {
+      display: none !important;
+    }
+    .cb-messenger-container {
+      height: calc(100dvh - var(--cb-nav-height)) !important;
+      height: calc(100vh - var(--cb-nav-height)) !important;
+      max-height: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    .cb-messenger-messages-area {
+      padding: 10px 8px !important;
+    }
+  }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0 p-md-3">
+    <div class="cb-messenger-container">
+        <!-- Sidebar: Conversations list -->
+        <div class="cb-messenger-sidebar {% if active_conversation %}mobile-hide{% endif %}">
+            <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                <h4 class="fw-bold mb-0">Chats</h4>
+                <div class="btn-group btn-group-sm">
+                    <a href="{% url 'chat:inbox' %}" class="btn {% if not show_archived %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-2 py-0" style="font-size: 11px;">Active</a>
+                    <a href="{% url 'chat:inbox' %}?archived=1" class="btn {% if show_archived %}btn-primary text-white{% else %}btn-light text-muted{% endif %} rounded-pill px-2 py-0 ms-1" style="font-size: 11px;">Archived</a>
+                </div>
+            </div>
+
+            <!-- Search Conversations Bar -->
+            <div class="p-2 border-bottom">
+                <form method="GET" action="{% url 'chat:inbox' %}" class="m-0">
+                    {% if show_archived %}<input type="hidden" name="archived" value="1">{% endif %}
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--cb-border);"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q" value="{{ search_q|default:'' }}" class="form-control border-start-0" placeholder="Search Messenger..." autocomplete="off">
+                    </div>
+                </form>
+            </div>
+
+            <div class="overflow-y-auto flex-grow-1 p-2">
+                {% if conversations %}
+                    {% for conv in conversations %}
+                        <a href="{% url 'chat:conversation' conversation_id=conv.id %}" class="d-flex align-items-center gap-2 p-2 rounded text-decoration-none text-reset mb-1 position-relative cb-conv-item {% if active_conversation and conv.id == active_conversation.id %}active{% endif %}">
+                            <div class="position-relative flex-shrink-0">
+                                <img src="{% if conv.other_user %}{{ conv.other_user.profile.get_avatar_url }}{% else %}{{ conv.get_avatar_url }}{% endif %}" class="cb-avatar cb-avatar-md shadow-sm" alt="" onerror="this.src='/static/images/default-avatar.svg'">
+                                <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle" style="width: 10px; height: 10px;"></span>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="fw-bold text-truncate" style="font-size: 14px;">{% if conv.other_user %}{{ conv.other_user.get_display_name }}{% else %}{{ conv.get_display_name }}{% endif %}</div>
+                                    {% with last_msg=conv.messages.last %}
+                                        {% if last_msg %}
+                                            <span class="text-muted" style="font-size: 10px;">{{ last_msg.created_at|timesince }}</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="small text-muted text-truncate {% if conv.unread_count > 0 %}fw-bold text-primary{% endif %}" style="font-size: 12px; max-width: 180px;">
+                                        {% with last_msg=conv.messages.last %}
+                                            {% if last_msg %}
+                                                {% if last_msg.sender == user %}You: {% endif %}{{ last_msg.content|default:'Attachment' }}
+                                            {% else %}
+                                                Started a conversation
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                    {% if conv.unread_count > 0 %}
+                                        <span class="badge bg-primary rounded-pill" style="font-size: 10px;">{{ conv.unread_count }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted p-4 small">
+                        {% if search_q %}
+                            No conversations matched "{{ search_q }}".
+                        {% else %}
+                            No conversations yet. Choose a contact to start chatting!
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="cb-messenger-main {% if not active_conversation %}d-none d-md-flex{% endif %}">
+            {% if active_conversation %}
+                <!-- Chat Header -->
+                <div class="cb-messenger-header p-2 p-md-3 border-bottom d-flex align-items-center justify-content-between" style="border-color: var(--cb-border) !important;">
+                    <div class="d-flex align-items-center gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">
+                        <!-- Mobile Back Button -->
+                        <a href="{% url 'chat:inbox' %}" class="btn btn-sm btn-cb-secondary d-md-none rounded-circle cb-chat-back-btn flex-shrink-0" title="Back to Chats">
+                            <i class="bi bi-chevron-left fs-5"></i>
+                        </a>
+
+                        <div class="position-relative flex-shrink-0">
+                            <img src="{% if recipient %}{{ recipient.profile.get_avatar_url }}{% else %}{{ active_conversation.get_avatar_url }}{% endif %}" class="cb-avatar cb-avatar-md shadow-sm" alt="Avatar" onerror="this.src='/static/images/default-avatar.svg'">
+                            <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle" style="width: 10px; height: 10px;"></span>
+                        </div>
+                        <div class="min-w-0 flex-grow-1 overflow-hidden">
+                            <div class="fw-bold fs-6 fs-md-5 text-truncate" style="max-width: 100%;">
+                                {% if recipient %}{{ recipient.get_display_name }}{% else %}{{ active_conversation.get_display_name }}{% endif %}
+                                {% if recipient and recipient.is_verified %}<i class="bi bi-patch-check-fill text-primary ms-1" style="font-size: 13px;"></i>{% endif %}
+                            </div>
+                            <div class="small text-success text-truncate" style="font-size: 11px;"><i class="bi bi-circle-fill" style="font-size: 7px;"></i> Active now</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0 cb-chat-header-actions">
+                        {% if recipient %}
+                            <a href="{% url 'chat:start_call' user_id=recipient.id call_type='audio' %}" class="btn btn-sm btn-cb-secondary rounded-circle text-primary shadow-sm cb-chat-action-btn" title="Voice Call">
+                                <i class="bi bi-telephone-fill"></i>
+                            </a>
+                            <a href="{% url 'chat:start_call' user_id=recipient.id call_type='video' %}" class="btn btn-sm btn-cb-secondary rounded-circle text-primary shadow-sm cb-chat-action-btn" title="Video Call">
+                                <i class="bi bi-camera-video-fill"></i>
+                            </a>
+                            <a href="{% url 'accounts:profile' username=recipient.username %}" class="btn btn-sm btn-cb-secondary py-1 px-3 rounded-pill fw-semibold d-none d-md-inline-flex" style="font-size: 13px;">
+                                Profile
+                            </a>
+                            <a href="{% url 'accounts:profile' username=recipient.username %}" class="btn btn-sm btn-cb-secondary rounded-circle shadow-sm cb-chat-action-btn d-md-none" title="View Profile">
+                                <i class="bi bi-person-fill"></i>
+                            </a>
+                        {% endif %}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-cb-secondary rounded-circle cb-chat-action-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Chat Options">
+                                <i class="bi bi-three-dots-vertical fs-6"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end cb-dropdown-menu shadow">
+                                {% if recipient %}
+                                <li class="d-md-none">
+                                    <a class="cb-dropdown-item" href="{% url 'accounts:profile' username=recipient.username %}">
+                                        <i class="bi bi-person-fill text-primary me-2"></i> View Profile
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li>
+                                    <form action="{% url 'chat:toggle_mute' conversation_id=active_conversation.id %}" method="POST" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                                            <i class="bi bi-bell-slash me-2"></i> {% if active_part.is_muted %}Unmute Conversation{% else %}Mute Conversation{% endif %}
+                                        </button>
+                                    </form>
+                                </li>
+                                <li>
+                                    <form action="{% url 'chat:toggle_archive' conversation_id=active_conversation.id %}" method="POST" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="cb-dropdown-item w-100 border-0 bg-transparent text-start">
+                                            <i class="bi bi-archive me-2"></i> {% if active_part.is_archived %}Unarchive Chat{% else %}Archive Chat{% endif %}
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="cb-messenger-messages-area p-2 p-md-3" id="chatMessagesContainer">
+                    {% for msg in messages_list %}
+                        {% if msg.sender == user %}
+                            <!-- Sent message (right aligned) -->
+                            <div class="d-flex justify-content-end mb-2 cb-msg-row cb-msg-row-sent" id="msg-row-{{ msg.id }}">
+                                <div class="cb-msg-bubble cb-msg-sent" id="msg-{{ msg.id }}">
+                                    {% if msg.reply_to %}
+                                        <div class="p-1 px-2 mb-1 rounded bg-black bg-opacity-20 border-start border-3 border-light text-truncate" style="font-size: 11px;">
+                                            <strong>{{ msg.reply_to.sender.get_display_name }}</strong>: {{ msg.reply_to.content|truncatechars:35 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if msg.attachment %}
+                                        <div class="mb-2">
+                                            <img src="{{ msg.attachment.url }}" class="img-fluid rounded shadow-sm" style="max-height: 220px; object-fit: cover; cursor: pointer;" onclick="window.open(this.src)" alt="Attachment">
+                                        </div>
+                                    {% endif %}
+                                    <div>{{ msg.content }}</div>
+                                    <div class="d-flex align-items-center justify-content-end gap-2 mt-1 opacity-75" style="font-size: 10px;">
+                                        <span role="button" class="text-decoration-none text-reset" onclick="window.chatInstance && window.chatInstance.setReplyTo({{ msg.id }}, '{{ msg.sender.get_display_name|escapejs }}', '{{ msg.content|truncatechars:40|escapejs }}')" title="Reply">
+                                            <i class="bi bi-reply-fill"></i>
+                                        </span>
+                                        <form action="{% url 'chat:delete_message' message_id=msg.id %}" method="POST" class="d-inline m-0" onsubmit="return confirm('Delete this message?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="border-0 bg-transparent text-reset p-0" title="Delete"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                        <span>{% if msg.is_edited %}<span class="fst-italic me-1">(edited)</span>{% endif %}{{ msg.created_at|date:"g:i A" }}</span>
+                                        <i class="bi bi-check2-all text-white"></i>
+                                    </div>
+                                    {% if msg.reactions.all %}
+                                        <div class="d-flex flex-wrap gap-1 mt-1 justify-content-end">
+                                            {% for r in msg.reactions.all %}
+                                                <span class="badge bg-white text-dark shadow-sm border rounded-pill py-0 px-1" style="font-size: 9px;">
+                                                    {% if r.reaction == 'like' %}👍{% elif r.reaction == 'love' %}❤️{% elif r.reaction == 'haha' %}😆{% elif r.reaction == 'wow' %}😮{% elif r.reaction == 'sad' %}😢{% elif r.reaction == 'angry' %}😡{% else %}{{ r.reaction }}{% endif %}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Received message (left aligned with avatar) -->
+                            <div class="d-flex align-items-end gap-2 mb-2 cb-msg-row cb-msg-row-received" id="msg-row-{{ msg.id }}">
+                                <img src="{{ msg.sender.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm shadow-sm flex-shrink-0" style="width: 30px; height: 30px; margin-bottom: 2px;" alt="" onerror="this.src='/static/images/default-avatar.svg'">
+                                <div class="cb-msg-bubble cb-msg-received" id="msg-{{ msg.id }}">
+                                    {% if msg.reply_to %}
+                                        <div class="p-1 px-2 mb-1 rounded bg-black bg-opacity-10 border-start border-3 border-primary text-truncate" style="font-size: 11px;">
+                                            <strong>{{ msg.reply_to.sender.get_display_name }}</strong>: {{ msg.reply_to.content|truncatechars:35 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if msg.attachment %}
+                                        <div class="mb-2">
+                                            <img src="{{ msg.attachment.url }}" class="img-fluid rounded shadow-sm" style="max-height: 220px; object-fit: cover; cursor: pointer;" onclick="window.open(this.src)" alt="Attachment">
+                                        </div>
+                                    {% endif %}
+                                    <div>{{ msg.content }}</div>
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mt-1 opacity-75" style="font-size: 10px;">
+                                        <span role="button" class="text-decoration-none text-reset" onclick="window.chatInstance && window.chatInstance.setReplyTo({{ msg.id }}, '{{ msg.sender.get_display_name|escapejs }}', '{{ msg.content|truncatechars:40|escapejs }}')" title="Reply">
+                                            <i class="bi bi-reply-fill"></i>
+                                        </span>
+                                        <span>{% if msg.is_edited %}<span class="fst-italic me-1">(edited)</span>{% endif %}{{ msg.created_at|date:"g:i A" }}</span>
+                                    </div>
+                                    {% if msg.reactions.all %}
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            {% for r in msg.reactions.all %}
+                                                <span class="badge bg-white text-dark shadow-sm border rounded-pill py-0 px-1" style="font-size: 9px;">
+                                                    {% if r.reaction == 'like' %}👍{% elif r.reaction == 'love' %}❤️{% elif r.reaction == 'haha' %}😆{% elif r.reaction == 'wow' %}😮{% elif r.reaction == 'sad' %}😢{% elif r.reaction == 'angry' %}😡{% else %}{{ r.reaction }}{% endif %}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Typing indicator -->
+                <div id="chatTypingIndicator" class="px-3 py-1 small text-muted fst-italic" style="display: none; font-size: 12px;"></div>
+
+                <!-- Reply Preview Box -->
+                <div id="chatReplyPreview" class="px-3 py-1 bg-light border-top d-flex align-items-center justify-content-between small text-muted" style="display: none !important;">
+                    <div class="text-truncate">
+                        <i class="bi bi-reply-fill text-primary me-1"></i> Replying to <strong id="chatReplyAuthor"></strong>: <span id="chatReplyText" class="fst-italic"></span>
+                    </div>
+                    <button type="button" class="btn btn-sm text-danger border-0 p-0" onclick="window.chatInstance && window.chatInstance.clearReplyTo()"><i class="bi bi-x-circle-fill"></i></button>
+                </div>
+
+                <!-- Message Composer Footer -->
+                <div class="p-2 p-md-3 border-top d-flex align-items-center gap-2 cb-messenger-composer" style="border-color: var(--cb-border) !important;">
+                    <label class="btn btn-sm btn-cb-secondary rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center m-0 flex-shrink-0 cb-composer-btn" title="Attach Photo">
+                        <i class="bi bi-image text-primary fs-5"></i>
+                        <input type="file" id="chatAttachmentInput" accept="image/*" class="d-none" onchange="window.chatInstance && window.chatInstance.handleAttachment(this)">
+                    </label>
+                    <input type="text" id="chatMessageInput" class="form-control rounded-pill px-3 cb-composer-input" placeholder="Type a message..." autocomplete="off">
+                    <button id="chatSendBtn" class="btn btn-cb-primary rounded-circle shadow-sm flex-shrink-0 cb-composer-btn" title="Send Message">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+            {% else %}
+                <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-5">
+                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-chat-dots-fill fs-1 text-primary"></i>
+                    </div>
+                    <h4 class="fw-bold">Your Messages</h4>
+                    <p class="small text-muted" style="max-width: 320px; text-align: center;">Send private photos and messages to a friend or group on ConnectBook.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if active_conversation %}
+<script src="{% static 'js/chat.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    new ConnectBookChat({{ active_conversation.id }}, {{ user.id }});
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,1015 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ConnectBook Reels | Short Videos{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ========================================================
+   CONNECTBOOK FACEBOOK-STYLE REELS STYLES
+   ======================================================== */
+.cb-reels-layout {
+    display: flex;
+    height: calc(100vh - var(--cb-nav-height));
+    background: #000000;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Left Sidebar - Desktop */
+.cb-reels-sidebar {
+    width: 320px;
+    min-width: 300px;
+    background: var(--cb-card);
+    border-right: 1px solid var(--cb-border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 20;
+}
+
+.cb-reels-category-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--cb-text);
+    text-decoration: none;
+    transition: background 0.15s ease;
+    margin-bottom: 2px;
+}
+.cb-reels-category-item:hover {
+    background: var(--cb-hover);
+    color: var(--cb-text);
+}
+.cb-reels-category-item.active {
+    background: rgba(24, 119, 242, 0.12);
+    color: var(--cb-primary);
+}
+.cb-reels-category-item.active i {
+    color: var(--cb-primary) !important;
+}
+
+/* Center Reels Stage */
+.cb-reels-stage {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    position: relative;
+    background: #0d0d0e;
+    overflow: hidden;
+}
+
+/* Vertical Scroll-Snap Feed */
+.cb-reels-scroll-container {
+    width: 100%;
+    height: 100%;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Single Reel Viewport Card */
+.cb-reel-viewport-item {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 12px 0;
+}
+
+/* 9:16 Video Wrapper */
+.cb-reel-video-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    height: 100%;
+    max-height: calc(100vh - var(--cb-nav-height) - 24px);
+    aspect-ratio: 9/16;
+    background: #000000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cb-reel-video-element {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+    cursor: pointer;
+}
+
+/* Progress scrubber line */
+.cb-reel-progress-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255,255,255,0.25);
+    z-index: 30;
+    cursor: pointer;
+}
+.cb-reel-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #e41e3f;
+    transition: width 0.1s linear;
+}
+
+/* Action Buttons Stack (Right of Video on Desktop / Overlaid on Mobile) */
+.cb-reel-actions-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-left: 16px;
+    z-index: 30;
+}
+.cb-reel-action-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: none;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: transform 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+}
+.cb-reel-action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.08);
+    color: #ffffff;
+}
+.cb-reel-action-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-top: 4px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Up/Down Floating Navigation Chevrons */
+.cb-reel-nav-chevrons {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 25;
+}
+.cb-reel-nav-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.cb-reel-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+/* Bottom Creator & Caption Overlay */
+.cb-reel-bottom-overlay {
+    position: absolute;
+    bottom: 6px;
+    left: 0;
+    right: 0;
+    padding: 18px 16px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+    color: #ffffff;
+    z-index: 25;
+    pointer-events: auto;
+}
+
+/* Slide-out Comments Panel */
+.cb-reel-comments-panel {
+    position: absolute;
+    top: 0;
+    right: -420px;
+    width: 400px;
+    height: 100%;
+    background: var(--cb-card);
+    border-left: 1px solid var(--cb-border);
+    box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+    z-index: 100;
+    transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+.cb-reel-comments-panel.open {
+    right: 0;
+}
+
+/* Mobile full-screen adjustments */
+@media (max-width: 991px) {
+    .cb-reels-sidebar {
+        display: none !important;
+    }
+    .cb-reel-nav-chevrons {
+        display: none !important;
+    }
+    .cb-reel-video-wrapper {
+        max-width: 100%;
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+    .cb-reel-viewport-item {
+        padding: 0;
+    }
+    .cb-reel-actions-column {
+        position: absolute;
+        right: 12px;
+        bottom: 80px;
+        margin-left: 0;
+    }
+    .cb-reel-comments-panel {
+        width: 100%;
+        right: 0;
+        bottom: -100%;
+        top: auto;
+        height: 70vh;
+        border-radius: 16px 16px 0 0;
+        transition: bottom 0.25s ease;
+    }
+    .cb-reel-comments-panel.open {
+        bottom: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cb-reels-layout">
+    <!-- 1. LEFT SIDEBAR (Desktop) -->
+    <div class="cb-reels-sidebar p-3 d-none d-lg-flex">
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-camera-reels-fill text-danger fs-4"></i>
+                <h4 class="fw-bold mb-0">Reels</h4>
+            </div>
+            <a href="{% url 'social:create_reel' %}" class="btn btn-sm btn-danger rounded-pill px-3 fw-semibold shadow-sm" title="Upload New Reel">
+                <i class="bi bi-plus-lg me-1"></i> Create
+            </a>
+        </div>
+
+        <!-- Discovery Tabs -->
+        <div class="mb-4">
+            <span class="small fw-bold text-muted text-uppercase px-2 mb-2 d-block" style="font-size: 11px;">Discovery</span>
+            <a href="{% url 'social:reels' %}?tab=for_you" class="cb-reels-category-item {% if tab == 'for_you' or not tab %}active{% endif %}">
+                <i class="bi bi-stars fs-5 text-warning"></i>
+                <span>For You</span>
+            </a>
+            <a href="{% url 'social:reels' %}?tab=following" class="cb-reels-category-item {% if tab == 'following' %}active{% endif %}">
+                <i class="bi bi-person-check-fill fs-5 text-primary"></i>
+                <span>Following</span>
+            </a>
+            <a href="{% url 'social:reels' %}?tab=trending" class="cb-reels-category-item {% if tab == 'trending' %}active{% endif %}">
+                <i class="bi bi-fire fs-5 text-danger"></i>
+                <span>Trending</span>
+            </a>
+            <a href="{% url 'social:reels' %}?tab=latest" class="cb-reels-category-item {% if tab == 'latest' %}active{% endif %}">
+                <i class="bi bi-clock-fill fs-5 text-info"></i>
+                <span>Latest</span>
+            </a>
+            <a href="{% url 'social:reels' %}?tab=popular" class="cb-reels-category-item {% if tab == 'popular' %}active{% endif %}">
+                <i class="bi bi-graph-up-arrow fs-5 text-success"></i>
+                <span>Popular</span>
+            </a>
+            <a href="{% url 'social:reels' %}?tab=saved" class="cb-reels-category-item {% if tab == 'saved' %}active{% endif %}">
+                <i class="bi bi-bookmark-fill fs-5 text-warning"></i>
+                <span>Saved Reels</span>
+            </a>
+        </div>
+
+        <!-- Creator Shortcuts -->
+        <div class="mb-4 pb-2 border-bottom">
+            <span class="small fw-bold text-muted text-uppercase px-2 mb-2 d-block" style="font-size: 11px;">Your Studio</span>
+            <a href="{% url 'social:my_reels' %}" class="cb-reels-category-item">
+                <i class="bi bi-person-video fs-5 text-danger"></i>
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <span>My Reels</span>
+                    <span class="badge bg-secondary-subtle text-secondary small rounded-pill">{{ my_reels_count }}</span>
+                </div>
+            </a>
+            <a href="{% url 'social:video_feed' %}" class="cb-reels-category-item">
+                <i class="bi bi-play-btn-fill fs-5 text-danger"></i>
+                <span>Watch Videos Hub</span>
+            </a>
+        </div>
+
+        <!-- Suggested Creators List -->
+        {% if suggested_creators %}
+        <div class="mb-3">
+            <span class="small fw-bold text-muted text-uppercase px-2 mb-2 d-block" style="font-size: 11px;">Suggested Creators</span>
+            <div class="d-flex flex-column gap-2">
+                {% for sc in suggested_creators %}
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded hover-bg">
+                        <a href="{% url 'accounts:profile' username=sc.username %}" class="d-flex align-items-center gap-2 text-decoration-none text-reset">
+                            <img src="{{ sc.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm rounded-circle" alt="">
+                            <div>
+                                <div class="fw-bold small text-truncate" style="max-width: 120px;">{{ sc.get_display_name }}</div>
+                                <div class="text-muted" style="font-size: 11px;">@{{ sc.username }}</div>
+                            </div>
+                        </a>
+                        <form action="{% url 'accounts:toggle_follow' username=sc.username %}" method="POST" class="m-0 ajax-follow-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-primary py-0 px-2 rounded-pill" style="font-size: 11px;">
+                                Follow
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="mt-auto pt-3 text-muted small text-center" style="font-size: 11px;">
+            ConnectBook Reels &copy; 2026<br>
+            Connect with Friends. Share Your World.
+        </div>
+    </div>
+
+    <!-- 2. CENTER REELS STAGE -->
+    <div class="cb-reels-stage">
+        <!-- Floating Up/Down Navigation Chevrons (Desktop) -->
+        <div class="cb-reel-nav-chevrons">
+            <button type="button" class="cb-reel-nav-btn" id="btnPrevReel" title="Previous Reel (Up Arrow)">
+                <i class="bi bi-chevron-up fs-5"></i>
+            </button>
+            <button type="button" class="cb-reel-nav-btn" id="btnNextReel" title="Next Reel (Down Arrow)">
+                <i class="bi bi-chevron-down fs-5"></i>
+            </button>
+        </div>
+
+        <!-- Vertical Reels Feed Container -->
+        <div class="cb-reels-scroll-container" id="reelsScrollContainer">
+            {% if reels %}
+                {% for reel in reels %}
+                    <div class="cb-reel-viewport-item" data-reel-id="{{ reel.id }}" id="reel-item-{{ reel.id }}">
+                        <!-- 9:16 Center Video Wrapper -->
+                        <div class="cb-reel-video-wrapper">
+                            <!-- HTML5 Video Player -->
+                            <video class="cb-reel-video-element" 
+                                   src="{{ reel.video_file.url }}" 
+                                   loop 
+                                   playsinline 
+                                   preload="auto" 
+                                   poster="{{ reel.get_thumbnail_url }}"></video>
+
+                            <!-- Center Tap Play/Pause Feedback Icon -->
+                            <div class="position-absolute top-50 start-50 translate-middle cb-reel-play-icon text-white p-3 rounded-circle bg-dark bg-opacity-50" style="display: none; z-index: 28; pointer-events: none;">
+                                <i class="bi bi-play-fill fs-1"></i>
+                            </div>
+
+                            <!-- Top Right Sound Toggle & Fullscreen Controls -->
+                            <div class="position-absolute top-0 end-0 p-3 d-flex align-items-center gap-2" style="z-index: 35;">
+                                <button type="button" class="btn btn-sm btn-dark bg-opacity-75 rounded-circle text-white p-2 border-0 cb-reel-mute-btn" title="Toggle Sound">
+                                    <i class="bi bi-volume-up-fill fs-5"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-dark bg-opacity-75 rounded-circle text-white p-2 border-0 cb-reel-fullscreen-btn" title="Fullscreen">
+                                    <i class="bi bi-arrows-fullscreen fs-5"></i>
+                                </button>
+                            </div>
+
+                            <!-- Bottom Creator Overlay -->
+                            <div class="cb-reel-bottom-overlay">
+                                <!-- Creator Line -->
+                                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                    <a href="{% url 'accounts:profile' username=reel.author.username %}" class="d-flex align-items-center gap-2 text-decoration-none text-white">
+                                        <img src="{{ reel.author.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm rounded-circle border border-2 border-white" alt="">
+                                        <span class="fw-bold">{{ reel.author.get_display_name }}</span>
+                                    </a>
+                                    {% if reel.author != user %}
+                                        <button type="button" 
+                                                class="badge rounded-pill border-0 px-2 py-1 text-white small cb-follow-toggle-btn {% if reel.author.id in following_ids %}bg-secondary{% else %}bg-primary{% endif %}" 
+                                                data-username="{{ reel.author.username }}">
+                                            {% if reel.author.id in following_ids %}Following{% else %}Follow{% endif %}
+                                        </button>
+                                    {% endif %}
+                                    {% if reel.location %}
+                                        <span class="small text-white-50"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ reel.location }}</span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Caption -->
+                                {% if reel.caption %}
+                                    <div class="small mb-2 text-white-90 cb-reel-caption-text" style="line-height: 1.4;">
+                                        {{ reel.caption }}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Audio Ticker & View Counter -->
+                                <div class="d-flex align-items-center gap-2 small text-white-50" style="font-size: 11px;">
+                                    <div class="d-flex align-items-center gap-1 text-truncate" style="max-width: 200px;">
+                                        <i class="bi bi-music-note-beamed text-danger"></i>
+                                        <span>{{ reel.audio_title }}</span>
+                                    </div>
+                                    <span>&bull;</span>
+                                    <span><i class="bi bi-eye-fill me-1"></i><span class="cb-reel-views-label">{{ reel.views_count }}</span> views</span>
+                                </div>
+                            </div>
+
+                            <!-- Bottom Scrubber Progress Bar -->
+                            <div class="cb-reel-progress-container">
+                                <div class="cb-reel-progress-bar"></div>
+                            </div>
+                        </div>
+
+                        <!-- Right Actions Stack -->
+                        <div class="cb-reel-actions-column">
+                            <!-- Author Avatar with profile link -->
+                            <div class="position-relative text-center">
+                                <a href="{% url 'accounts:profile' username=reel.author.username %}" title="{{ reel.author.get_display_name }}">
+                                    <img src="{{ reel.author.profile.get_avatar_url }}" class="cb-avatar rounded-circle border border-2 border-white shadow" style="width: 48px; height: 48px; object-fit: cover;" alt="">
+                                </a>
+                            </div>
+
+                            <!-- Like Action -->
+                            <div class="d-flex flex-column align-items-center">
+                                <button type="button" class="cb-reel-action-btn cb-reel-like-btn" data-reel-id="{{ reel.id }}" title="Like Reel">
+                                    <i class="bi {% if reel.id in liked_reel_ids %}bi-heart-fill text-danger{% else %}bi-heart{% endif %}"></i>
+                                </button>
+                                <span class="cb-reel-action-label cb-reel-like-count">{{ reel.likes_count }}</span>
+                            </div>
+
+                            <!-- Comments Action (Opens Slide-out Panel) -->
+                            <div class="d-flex flex-column align-items-center">
+                                <button type="button" class="cb-reel-action-btn cb-reel-open-comments-btn" data-reel-id="{{ reel.id }}" title="View Comments">
+                                    <i class="bi bi-chat-dots-fill"></i>
+                                </button>
+                                <span class="cb-reel-action-label cb-reel-comments-count">{{ reel.comments_count }}</span>
+                            </div>
+
+                            <!-- Share Action (Opens Share Modal) -->
+                            <div class="d-flex flex-column align-items-center">
+                                <button type="button" class="cb-reel-action-btn cb-reel-share-btn" data-reel-id="{{ reel.id }}" data-reel-url="{{ request.scheme }}://{{ request.get_host }}{% url 'social:reel_detail' reel_id=reel.id %}" title="Share Reel">
+                                    <i class="bi bi-share-fill"></i>
+                                </button>
+                                <span class="cb-reel-action-label">Share</span>
+                            </div>
+
+                            <!-- Save Action -->
+                            <div class="d-flex flex-column align-items-center">
+                                <button type="button" class="cb-reel-action-btn cb-reel-save-btn" data-reel-id="{{ reel.id }}" title="Save Reel">
+                                    <i class="bi {% if reel.id in saved_reel_ids %}bi-bookmark-fill text-warning{% else %}bi-bookmark{% endif %}"></i>
+                                </button>
+                                <span class="cb-reel-action-label">Save</span>
+                            </div>
+
+                            <!-- More Options Dropdown -->
+                            <div class="dropdown">
+                                <button type="button" class="cb-reel-action-btn" data-bs-toggle="dropdown" aria-expanded="false" title="More Options">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="background: var(--cb-card); border-color: var(--cb-border);">
+                                    <li>
+                                        <button class="dropdown-item py-2" onclick="copyPostLink('{{ request.scheme }}://{{ request.get_host }}{% url 'social:reel_detail' reel_id=reel.id %}')">
+                                            <i class="bi bi-link-45deg me-2 fs-5"></i> Copy Link
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2" href="{% url 'social:reel_detail' reel_id=reel.id %}">
+                                            <i class="bi bi-box-arrow-up-right me-2"></i> Open Full View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 text-danger" href="{% url 'social:report_content' target_type='reel' target_id=reel.id %}">
+                                            <i class="bi bi-flag-fill me-2"></i> Report Reel
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Empty State -->
+                <div class="d-flex flex-column align-items-center justify-content-center text-center p-5 text-white my-auto">
+                    <div class="mb-3 text-danger"><i class="bi bi-camera-reels" style="font-size: 4rem;"></i></div>
+                    <h3 class="fw-bold mb-2">No Reels Found</h3>
+                    <p class="text-white-50 small mb-4" style="max-width: 420px;">
+                        {% if tab == 'saved' %}
+                            You haven't saved any Reels yet. Explore trending Reels and save your favorites!
+                        {% elif tab == 'following' %}
+                            Creators you follow haven't posted any Reels yet. Explore the "For You" tab to find new talent.
+                        {% else %}
+                            Be the first creator to share an engaging vertical video on ConnectBook!
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'social:create_reel' %}" class="btn btn-danger rounded-pill px-4 py-2 fw-semibold shadow">
+                        <i class="bi bi-plus-lg me-1"></i> Create a Reel
+                    </a>
+                </div>
+            {% endif %}
+
+            <!-- Infinite Scroll Loading Spinner -->
+            <div id="reelsInfiniteSentinel" class="py-4 text-center text-white-50 w-100" style="display: none;">
+                <div class="spinner-border spinner-border-sm text-danger" role="status"></div> Loading more reels...
+            </div>
+        </div>
+
+        <!-- 3. SLIDE-OUT COMMENTS PANEL -->
+        <div class="cb-reel-comments-panel" id="reelCommentsPanel">
+            <!-- Comments Header -->
+            <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="fw-bold mb-0">Comments</h5>
+                    <span class="badge bg-secondary rounded-pill" id="panelCommentsCount">0</span>
+                </div>
+                <button type="button" class="btn-close" id="btnCloseCommentsPanel" aria-label="Close"></button>
+            </div>
+
+            <!-- Comments List Body -->
+            <div class="flex-grow-1 p-3 overflow-y-auto" id="panelCommentsList">
+                <div class="text-center py-4 text-muted small" id="panelCommentsLoading">
+                    <div class="spinner-border spinner-border-sm text-primary mb-2"></div><br>Loading comments...
+                </div>
+            </div>
+
+            <!-- Comment Input Form -->
+            <div class="p-3 border-top" style="background: var(--cb-bg);">
+                <form id="panelCommentForm" class="d-flex align-items-center gap-2">
+                    {% csrf_token %}
+                    <input type="hidden" id="panelActiveReelId" value="">
+                    <input type="text" class="form-control rounded-pill" id="panelCommentInput" placeholder="Add a comment..." autocomplete="off" required>
+                    <button type="submit" class="btn btn-primary rounded-circle" style="width: 40px; height: 40px; flex-shrink: 0;" title="Send Comment">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. FACEBOOK-STYLE SHARE MODAL -->
+<div class="modal fade" id="reelShareModal" tabindex="-1" aria-labelledby="reelShareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="background: var(--cb-card); color: var(--cb-text); border-radius: 14px;">
+            <div class="modal-header border-bottom py-2 px-3">
+                <h5 class="modal-title fw-bold fs-6 w-100 text-center" id="reelShareModalLabel">Share Reel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="d-flex flex-column gap-2 mb-3">
+                    <!-- Share to Feed Form -->
+                    <button type="button" class="btn btn-light d-flex align-items-center justify-content-between p-3 rounded text-start border hover-bg" id="btnShareReelToFeed">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 fs-4" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-newspaper"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Share to News Feed</div>
+                                <div class="small text-muted">Post this Reel directly to your timeline.</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <!-- Copy Link -->
+                    <button type="button" class="btn btn-light d-flex align-items-center justify-content-between p-3 rounded text-start border hover-bg" id="btnCopyReelShareLink">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success bg-opacity-10 text-success p-2 fs-4" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-link-45deg"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Copy Link</div>
+                                <div class="small text-muted" id="shareReelUrlLabel">Copy permanent Reel URL</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-clipboard text-muted"></i>
+                    </button>
+
+                    <!-- Send in Messenger -->
+                    <a href="{% url 'chat:inbox' %}" class="btn btn-light d-flex align-items-center justify-content-between p-3 rounded text-start border hover-bg">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-info bg-opacity-10 text-info p-2 fs-4" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-chat-dots-fill"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Send in Messenger</div>
+                                <div class="small text-muted">Share in direct chat with your friends.</div>
+                            </div>
+                        </div>
+                        <i class="bi bi-arrow-up-right text-muted"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================
+     CONNECTBOOK REELS JAVASCRIPT ENGINE
+     ======================================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('reelsScrollContainer');
+    const commentsPanel = document.getElementById('reelCommentsPanel');
+    const closeCommentsBtn = document.getElementById('btnCloseCommentsPanel');
+    const commentForm = document.getElementById('panelCommentForm');
+    const commentInput = document.getElementById('panelCommentInput');
+    const commentsList = document.getElementById('panelCommentsList');
+    const activeReelIdInput = document.getElementById('panelActiveReelId');
+    const commentsCountBadge = document.getElementById('panelCommentsCount');
+
+    let isSoundMuted = false;
+    let activeShareReelId = null;
+    let activeShareReelUrl = '';
+
+    // 1. Single Autoplay with IntersectionObserver
+    const reelObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            const video = entry.target.querySelector('video');
+            const reelId = entry.target.getAttribute('data-reel-id');
+
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                if (video) {
+                    video.muted = isSoundMuted;
+                    video.play().catch(() => {});
+                    // Record View once
+                    if (!entry.target.dataset.viewRecorded) {
+                        entry.target.dataset.viewRecorded = "true";
+                        fetch(`/reels/${reelId}/view/`)
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.status === 'ok') {
+                                    const label = entry.target.querySelector('.cb-reel-views-label');
+                                    if (label) label.textContent = data.views_count;
+                                }
+                            }).catch(() => {});
+                    }
+                }
+            } else {
+                if (video) {
+                    video.pause();
+                }
+            }
+        });
+    }, { threshold: 0.6 });
+
+    // Bind every reel card
+    function setupReelCard(card) {
+        const video = card.querySelector('video');
+        const progressBar = card.querySelector('.cb-reel-progress-bar');
+        const playIcon = card.querySelector('.cb-reel-play-icon');
+        const muteBtn = card.querySelector('.cb-reel-mute-btn');
+        const fullscreenBtn = card.querySelector('.cb-reel-fullscreen-btn');
+
+        if (video) {
+            // Tap video to toggle play / pause
+            video.addEventListener('click', () => {
+                if (video.paused) {
+                    video.play();
+                    if (playIcon) {
+                        playIcon.style.display = 'block';
+                        playIcon.innerHTML = '<i class="bi bi-play-fill fs-1"></i>';
+                        setTimeout(() => { playIcon.style.display = 'none'; }, 600);
+                    }
+                } else {
+                    video.pause();
+                    if (playIcon) {
+                        playIcon.style.display = 'block';
+                        playIcon.innerHTML = '<i class="bi bi-pause-fill fs-1"></i>';
+                        setTimeout(() => { playIcon.style.display = 'none'; }, 600);
+                    }
+                }
+            });
+
+            // Update scrubber progress bar
+            video.addEventListener('timeupdate', () => {
+                if (video.duration) {
+                    const pct = (video.currentTime / video.duration) * 100;
+                    if (progressBar) progressBar.style.width = pct + '%';
+                }
+            });
+
+            // Sound toggle
+            if (muteBtn) {
+                muteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    isSoundMuted = !isSoundMuted;
+                    document.querySelectorAll('.cb-reel-video-element').forEach(v => v.muted = isSoundMuted);
+                    document.querySelectorAll('.cb-reel-mute-btn i').forEach(icon => {
+                        icon.className = isSoundMuted ? 'bi bi-volume-mute-fill fs-5 text-warning' : 'bi bi-volume-up-fill fs-5';
+                    });
+                });
+            }
+
+            // Fullscreen toggle
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (!document.fullscreenElement) {
+                        video.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                });
+            }
+        }
+
+        reelObserver.observe(card);
+    }
+
+    document.querySelectorAll('.cb-reel-viewport-item').forEach(setupReelCard);
+
+    // 2. Previous / Next Chevron Navigation & Keyboard Arrows
+    const btnPrev = document.getElementById('btnPrevReel');
+    const btnNext = document.getElementById('btnNextReel');
+
+    if (btnPrev && container) {
+        btnPrev.addEventListener('click', () => {
+            container.scrollBy({ top: -container.clientHeight, behavior: 'smooth' });
+        });
+    }
+    if (btnNext && container) {
+        btnNext.addEventListener('click', () => {
+            container.scrollBy({ top: container.clientHeight, behavior: 'smooth' });
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (container) container.scrollBy({ top: container.clientHeight, behavior: 'smooth' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (container) container.scrollBy({ top: -container.clientHeight, behavior: 'smooth' });
+        }
+    });
+
+    // 3. Comments Slide-Out Drawer
+    document.addEventListener('click', (e) => {
+        const commentBtn = e.target.closest('.cb-reel-open-comments-btn');
+        if (commentBtn) {
+            const reelId = commentBtn.getAttribute('data-reel-id');
+            openCommentsPanel(reelId);
+        }
+    });
+
+    if (closeCommentsBtn) {
+        closeCommentsBtn.addEventListener('click', () => {
+            if (commentsPanel) commentsPanel.classList.remove('open');
+        });
+    }
+
+    function openCommentsPanel(reelId) {
+        if (!commentsPanel) return;
+        activeReelIdInput.value = reelId;
+        commentsPanel.classList.add('open');
+        commentsList.innerHTML = '<div class="text-center py-4 text-muted small"><div class="spinner-border spinner-border-sm text-primary mb-2"></div><br>Loading comments...</div>';
+
+        fetch(`/reels/${reelId}/comments/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    if (commentsCountBadge) commentsCountBadge.textContent = data.comments_count;
+                    if (data.comments && data.comments.length > 0) {
+                        let html = '';
+                        data.comments.forEach(c => {
+                            html += `
+                                <div class="d-flex gap-2 mb-3">
+                                    <img src="${c.author_avatar}" class="cb-avatar cb-avatar-sm rounded-circle" style="width: 32px; height: 32px;">
+                                    <div class="flex-grow-1 p-2 rounded" style="background: var(--cb-bg);">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <a href="/profile/${c.author_username}/" class="fw-bold small text-decoration-none text-reset">${c.author_name}</a>
+                                            <span class="text-muted" style="font-size: 10px;">${c.created_at}</span>
+                                        </div>
+                                        <div class="small">${escapeHtml(c.content)}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        commentsList.innerHTML = html;
+                    } else {
+                        commentsList.innerHTML = '<div class="text-center text-muted py-5 small">No comments yet. Say something friendly!</div>';
+                    }
+                }
+            })
+            .catch(() => {
+                commentsList.innerHTML = '<div class="text-center text-danger py-4 small">Unable to load comments.</div>';
+            });
+    }
+
+    // Submit new comment inside Slide-out Panel
+    if (commentForm) {
+        commentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const reelId = activeReelIdInput.value;
+            const content = commentInput.value.trim();
+            if (!content || !reelId) return;
+
+            const formData = new FormData();
+            formData.append('content', content);
+
+            fetch(`/reels/${reelId}/comments/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok' && data.comment) {
+                    commentInput.value = '';
+                    if (commentsCountBadge) commentsCountBadge.textContent = data.comments_count;
+
+                    // Update count label on reel card
+                    const card = document.getElementById(`reel-item-${reelId}`);
+                    if (card) {
+                        const countSpan = card.querySelector('.cb-reel-comments-count');
+                        if (countSpan) countSpan.textContent = data.comments_count;
+                    }
+
+                    // Prepend new comment element
+                    const newCommentHtml = `
+                        <div class="d-flex gap-2 mb-3 animate-fade-in">
+                            <img src="${data.comment.author_avatar}" class="cb-avatar cb-avatar-sm rounded-circle" style="width: 32px; height: 32px;">
+                            <div class="flex-grow-1 p-2 rounded" style="background: var(--cb-bg);">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold small">${data.comment.author_name}</span>
+                                    <span class="text-muted" style="font-size: 10px;">Just now</span>
+                                </div>
+                                <div class="small">${escapeHtml(data.comment.content)}</div>
+                            </div>
+                        </div>
+                    `;
+                    const emptyState = commentsList.querySelector('.text-muted.py-5');
+                    if (emptyState) commentsList.innerHTML = '';
+                    commentsList.insertAdjacentHTML('afterbegin', newCommentHtml);
+                }
+            });
+        });
+    }
+
+    // 4. Like / React Toggle Delegate
+    document.addEventListener('click', (e) => {
+        const likeBtn = e.target.closest('.cb-reel-like-btn');
+        if (likeBtn) {
+            const reelId = likeBtn.getAttribute('data-reel-id');
+            fetch(`/reels/${reelId}/react/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const icon = likeBtn.querySelector('i');
+                const countSpan = likeBtn.parentElement.querySelector('.cb-reel-like-count');
+                if (data.status === 'liked') {
+                    icon.className = 'bi bi-heart-fill text-danger';
+                } else {
+                    icon.className = 'bi bi-heart';
+                }
+                if (countSpan && data.likes_count !== undefined) countSpan.textContent = data.likes_count;
+            });
+        }
+
+        // Save Reel Toggle Delegate
+        const saveBtn = e.target.closest('.cb-reel-save-btn');
+        if (saveBtn) {
+            const reelId = saveBtn.getAttribute('data-reel-id');
+            fetch(`/reels/${reelId}/save/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const icon = saveBtn.querySelector('i');
+                if (data.status === 'saved') {
+                    icon.className = 'bi bi-bookmark-fill text-warning';
+                } else {
+                    icon.className = 'bi bi-bookmark';
+                }
+            });
+        }
+
+        // Follow Creator Toggle Delegate
+        const followBtn = e.target.closest('.cb-follow-toggle-btn');
+        if (followBtn) {
+            const username = followBtn.getAttribute('data-username');
+            fetch(`/accounts/profile/${username}/follow/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    document.querySelectorAll(`.cb-follow-toggle-btn[data-username="${username}"]`).forEach(btn => {
+                        if (data.is_following) {
+                            btn.textContent = 'Following';
+                            btn.className = 'badge rounded-pill border-0 px-2 py-1 text-white small cb-follow-toggle-btn bg-secondary';
+                        } else {
+                            btn.textContent = 'Follow';
+                            btn.className = 'badge rounded-pill border-0 px-2 py-1 text-white small cb-follow-toggle-btn bg-primary';
+                        }
+                    });
+                }
+            });
+        }
+
+        // Share Reel Modal Trigger
+        const shareBtn = e.target.closest('.cb-reel-share-btn');
+        if (shareBtn) {
+            activeShareReelId = shareBtn.getAttribute('data-reel-id');
+            activeShareReelUrl = shareBtn.getAttribute('data-reel-url') || window.location.origin + `/reels/${activeShareReelId}/`;
+            const urlLabel = document.getElementById('shareReelUrlLabel');
+            if (urlLabel) urlLabel.textContent = activeShareReelUrl;
+
+            const modalElem = document.getElementById('reelShareModal');
+            if (modalElem) {
+                const modal = new bootstrap.Modal(modalElem);
+                modal.show();
+            }
+        }
+    });
+
+    // Share to Feed action inside modal
+    const btnShareToFeed = document.getElementById('btnShareReelToFeed');
+    if (btnShareToFeed) {
+        btnShareToFeed.addEventListener('click', () => {
+            if (!activeShareReelId) return;
+            const formData = new FormData();
+            formData.append('content', 'Shared from Reels');
+
+            fetch(`/reels/${activeShareReelId}/share-to-feed/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const modalElem = document.getElementById('reelShareModal');
+                    const modal = bootstrap.Modal.getInstance(modalElem);
+                    if (modal) modal.hide();
+                    alert('Reel successfully shared to your News Feed!');
+                }
+            });
+        });
+    }
+
+    // Copy link inside share modal
+    const btnCopyShareLink = document.getElementById('btnCopyReelShareLink');
+    if (btnCopyShareLink) {
+        btnCopyShareLink.addEventListener('click', () => {
+            if (activeShareReelUrl) copyPostLink(activeShareReelUrl);
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+});
+</script>
+{% endblock %}

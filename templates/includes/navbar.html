@@ -1,0 +1,167 @@
+{% load static %}
+<nav class="cb-navbar">
+    <!-- LEFT: Logo & Search -->
+    <div class="cb-nav-left">
+        <a href="{% url 'social:feed' %}" class="cb-nav-brand">
+            <img src="{% static 'images/logo.svg' %}" width="38" height="38" alt="ConnectBook">
+            <span class="cb-nav-brand-text">ConnectBook</span>
+        </a>
+
+        <!-- Desktop Search Bar -->
+        <div class="cb-search-bar d-none d-md-block">
+            <i class="bi bi-search cb-search-icon"></i>
+            <input type="text" class="cb-search-input" id="globalSearchInput" placeholder="Search ConnectBook..." autocomplete="off">
+            <div class="cb-search-dropdown" id="globalSearchDropdown"></div>
+        </div>
+
+        <!-- Mobile Search Trigger Button -->
+        <button class="btn-cb-icon d-md-none cb-mobile-search-btn" data-bs-toggle="modal" data-bs-target="#mobileSearchModal" title="Search">
+            <i class="bi bi-search"></i>
+        </button>
+    </div>
+
+    <!-- CENTER: Main Tabs (Desktop / Laptop Only) -->
+    <div class="cb-nav-center d-none d-lg-flex">
+        <a href="{% url 'social:feed' %}" class="cb-nav-tab {% if active_nav == 'feed' %}active{% endif %}" title="Home">
+            <i class="bi bi-house-door-fill"></i>
+        </a>
+        <a href="{% url 'friends:list' %}" class="cb-nav-tab {% if active_nav == 'friends' %}active{% endif %}" title="Friends">
+            <i class="bi bi-people-fill"></i>
+        </a>
+        <a href="{% url 'social:video_feed' %}" class="cb-nav-tab {% if active_nav == 'videos' %}active{% endif %}" title="Watch">
+            <i class="bi bi-play-btn-fill"></i>
+        </a>
+        <a href="{% url 'social:reels' %}" class="cb-nav-tab {% if active_nav == 'reels' %}active{% endif %}" title="Reels">
+            <i class="bi bi-camera-reels-fill"></i>
+        </a>
+        <a href="{% url 'marketplace:listing_list' %}" class="cb-nav-tab {% if active_nav == 'marketplace' %}active{% endif %}" title="Marketplace">
+            <i class="bi bi-shop"></i>
+        </a>
+        <a href="{% url 'groups_app:list' %}" class="cb-nav-tab {% if active_nav == 'groups' %}active{% endif %}" title="Groups">
+            <i class="bi bi-collection-fill"></i>
+        </a>
+        <a href="{% url 'social:saved_posts' %}" class="cb-nav-tab {% if active_nav == 'saved' %}active{% endif %}" title="Saved">
+            <i class="bi bi-bookmark-fill"></i>
+        </a>
+    </div>
+
+    <!-- RIGHT: Actions (Theme, Messenger, Notifications, Account) -->
+    <div class="cb-nav-right">
+        <!-- Theme Switcher -->
+        <button class="btn-cb-icon" id="themeToggleBtn" title="Toggle Light/Dark Theme">
+            <i class="bi bi-moon-stars-fill" id="themeToggleIcon"></i>
+        </button>
+
+        <!-- Messenger Dropdown / Link -->
+        <a href="{% url 'chat:inbox' %}" class="btn-cb-icon" title="Messenger">
+            <i class="bi bi-chat-dots-fill"></i>
+            {% if unread_messages_count > 0 %}
+                <span class="cb-badge">{{ unread_messages_count }}</span>
+            {% endif %}
+        </a>
+
+        <!-- Notifications Dropdown (Desktop / Tablet) -->
+        <div class="dropdown">
+            <button class="btn-cb-icon" id="notificationDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                <i class="bi bi-bell-fill"></i>
+                <span class="cb-badge" id="notificationBadge" style="{% if unread_notifications_count == 0 %}display:none;{% endif %}">
+                    {{ unread_notifications_count }}
+                </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end cb-dropdown-menu p-0 shadow-lg" style="width: 360px;" aria-labelledby="notificationDropdownBtn">
+                <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+                    <span class="fw-bold fs-5">Notifications</span>
+                    <a href="{% url 'notifications:mark_all_read' %}" class="small text-primary text-decoration-none fw-bold">Mark all read</a>
+                </div>
+                <div style="max-height: 360px; overflow-y: auto;">
+                    {% if recent_notifications %}
+                        {% for n in recent_notifications %}
+                            <a href="{% if n.target_url %}{{ n.target_url }}{% else %}{% url 'notifications:list' %}{% endif %}" class="cb-dropdown-item border-bottom {% if not n.is_read %}bg-body-secondary{% endif %}">
+                                <img src="{{ n.actor.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                <div class="flex-grow-1">
+                                    <div class="small fw-semibold">{{ n.title }}</div>
+                                    <div class="small text-muted">{{ n.message }}</div>
+                                    <div class="text-primary" style="font-size: 11px;">{{ n.created_at|timesince }} ago</div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted small">No notifications yet.</div>
+                    {% endif %}
+                </div>
+                <div class="p-2 border-top text-center">
+                    <a href="{% url 'notifications:list' %}" class="small text-primary fw-bold">See all notifications</a>
+                </div>
+            </ul>
+        </div>
+
+        <!-- User Profile Dropdown -->
+        <div class="dropdown">
+            <button class="btn p-0 border-0" data-bs-toggle="dropdown" aria-expanded="false" title="Account Menu">
+                <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar" alt="{{ user.username }}">
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end cb-dropdown-menu p-2 shadow-lg" aria-labelledby="userDropdown">
+                <a href="{% url 'accounts:profile' username=user.username %}" class="cb-dropdown-item border-bottom pb-2 mb-2">
+                    <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar" alt="">
+                    <div>
+                        <div class="fw-bold">{{ user.get_display_name }}</div>
+                        <div class="small text-muted">@{{ user.username }}</div>
+                    </div>
+                </a>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'accounts:profile' username=user.username %}">
+                        <i class="bi bi-person-circle fs-5 text-primary"></i> My Profile
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'social:my_posts' %}">
+                        <i class="bi bi-collection-play-fill fs-5 text-primary"></i> Manage My Posts
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'accounts:settings' %}">
+                        <i class="bi bi-gear-fill fs-5 text-secondary"></i> Settings
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'accounts:privacy_settings' %}">
+                        <i class="bi bi-shield-check fs-5 text-primary"></i> Privacy Center
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'accounts:security_settings' %}">
+                        <i class="bi bi-shield-lock fs-5 text-success"></i> Security Center
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'accounts:your_information' %}">
+                        <i class="bi bi-download fs-5 text-info"></i> Your Information
+                    </a>
+                </li>
+                {% if user.is_staff %}
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'admin_dashboard:overview' %}">
+                        <i class="bi bi-speedometer2 fs-5 text-warning"></i> Admin Panel
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="{% url 'admin_dashboard:privacy_security' %}">
+                        <i class="bi bi-shield-shaded fs-5 text-purple" style="color: #9333EA;"></i> Staff Privacy & Security
+                    </a>
+                </li>
+                <li>
+                    <a class="cb-dropdown-item" href="/admin/">
+                        <i class="bi bi-lock-fill fs-5 text-danger"></i> Django Admin
+                    </a>
+                </li>
+                {% endif %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="cb-dropdown-item text-danger" href="{% url 'accounts:logout' %}">
+                        <i class="bi bi-box-arrow-right fs-5"></i> Log Out
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Privacy & Security Center | ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-md-4 px-2 px-md-4">
+    <!-- Header -->
+    <div class="d-flex align-items-md-center justify-content-between flex-column flex-md-row gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 fs-3 fs-md-2"><i class="bi bi-shield-shaded text-primary me-2"></i>Admin Privacy & Security Center</h2>
+            <div class="text-muted small">Strict admin compliance, role authorization, sensitive access audit, and user privacy request handling.</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'admin_dashboard:overview' %}" class="btn btn-cb-secondary btn-sm py-2"><i class="bi bi-arrow-left me-1"></i>Overview</a>
+            <a href="{% url 'admin_dashboard:moderation' %}" class="btn btn-danger btn-sm py-2"><i class="bi bi-flag-fill me-1"></i>Moderation Queue</a>
+            <a href="{% url 'admin_dashboard:audit_logs' %}" class="btn btn-cb-secondary btn-sm py-2"><i class="bi bi-journal-text me-1"></i>Audit Logs</a>
+        </div>
+    </div>
+
+    <!-- Security Principles Alert -->
+    <div class="alert alert-dark border d-flex align-items-center gap-3 py-2 px-3 mb-4">
+        <i class="bi bi-shield-lock-fill fs-3 text-warning"></i>
+        <div class="small">
+            <strong>Strict Staff Privacy Policy Active</strong>: Administrative status does not grant unrestricted access to user private messages, passwords, or personal credentials. Every inspection of sensitive content requires explicit logging with justification and audit trail. Staff self-promotion is strictly disabled.
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Account Deletion Requests -->
+        <div class="col-lg-6">
+            <div class="cb-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-danger"><i class="bi bi-trash3-fill me-2"></i>Account Deletion Requests</h5>
+                    <span class="badge bg-danger-subtle text-danger">{{ deletion_requests.count }} Total</span>
+                </div>
+                {% if deletion_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Requested</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for req in deletion_requests %}
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold">@{{ req.user.username }}</span>
+                                            {% if req.reason %}
+                                                <div class="text-muted" style="font-size: 11px;">"{{ req.reason|truncatechars:40 }}"</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-muted">{{ req.requested_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if req.scheduled_deletion_date %}
+                                                {{ req.scheduled_deletion_date|date:"M d, Y" }}
+                                            {% else %}
+                                                Immediate
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if req.status == 'pending' %}
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            {% elif req.status == 'approved' %}
+                                                <span class="badge bg-danger">Approved</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if req.status == 'pending' %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'admin_dashboard:handle_deletion_request' request_id=req.id action='approve' %}" class="btn btn-outline-danger" onclick="return confirm('Approve permanent deletion for @{{ req.user.username }}?');">
+                                                        Approve
+                                                    </a>
+                                                    <a href="{% url 'admin_dashboard:handle_deletion_request' request_id=req.id action='reject' %}" class="btn btn-outline-secondary">
+                                                        Dismiss
+                                                    </a>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0 py-3 text-center">No pending user deletion requests.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- User Data Export Requests -->
+        <div class="col-lg-6">
+            <div class="cb-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-arrow-down-fill me-2"></i>User Data Exports (GDPR / Privacy)</h5>
+                    <span class="badge bg-primary-subtle text-primary">{{ data_exports.count }} Recorded</span>
+                </div>
+                {% if data_exports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Requested At</th>
+                                    <th>Status</th>
+                                    <th>Downloads</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for exp in data_exports %}
+                                    <tr>
+                                        <td>
+                                            <span class="fw-bold">@{{ exp.user.username }}</span>
+                                            <div class="text-muted" style="font-size: 11px;">{{ exp.user.email }}</div>
+                                        </td>
+                                        <td class="text-muted">{{ exp.requested_at|date:"M d, Y H:i" }}</td>
+                                        <td><span class="badge bg-success-subtle text-success">{{ exp.get_status_display }}</span></td>
+                                        <td><span class="badge bg-light text-dark border">{{ exp.download_count }}x</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0 py-3 text-center">No recorded data exports.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sensitive Access Log & Compliance -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="cb-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-shield-exclamation text-warning me-2"></i>Sensitive Resource Access Log</h5>
+                    <span class="badge bg-secondary-subtle text-secondary">{{ sensitive_access_logs.count }} Entries</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle small">
+                        <thead>
+                            <tr>
+                                <th>Staff Member</th>
+                                <th>Target Resource</th>
+                                <th>Justification / Reason</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in sensitive_access_logs %}
+                                <tr>
+                                    <td class="fw-bold">@{{ log.staff_user.username }}</td>
+                                    <td><code>{{ log.target_resource }}</code></td>
+                                    <td class="text-muted">{{ log.reason|truncatechars:50 }}</td>
+                                    <td class="text-muted">{{ log.accessed_at|date:"M d, H:i" }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">No sensitive resource accesses recorded.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Authorized Access Form -->
+        <div class="col-lg-5">
+            <div class="cb-card p-4 h-100">
+                <h5 class="fw-bold mb-2"><i class="bi bi-pencil-square text-primary me-2"></i>Log Authorized Sensitive Access</h5>
+                <p class="text-muted small mb-3">Before inspecting sensitive user-reported data, staff must submit a documented justification for audit records.</p>
+                <form action="{% url 'admin_dashboard:log_sensitive_access' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Target Resource / Identifier</label>
+                        <input type="text" name="target_resource" class="form-control form-control-sm" placeholder="e.g. User #14 / Post #88 Moderation Inspection" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Business Reason / Ticket ID</label>
+                        <textarea name="reason" rows="3" class="form-control form-control-sm" placeholder="Explain why sensitive access is necessary..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-cb-primary btn-sm w-100 fw-semibold">
+                        <i class="bi bi-check-circle me-1"></i>Submit Audit Log & Authorize
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff & Role Permissions -->
+    <div class="cb-card p-4">
+        <h5 class="fw-bold mb-3 border-bottom pb-2"><i class="bi bi-person-badge-fill text-purple me-2"></i>Staff Role Permissions & Administrative Roster</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle small mb-0">
+                <thead>
+                    <tr>
+                        <th>Staff Member</th>
+                        <th>Role</th>
+                        <th>Moderation Queue</th>
+                        <th>User Suspension</th>
+                        <th>Sensitive Audits</th>
+                        <th>Superuser Access</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in staff_users %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ s.profile.get_avatar_url }}" class="cb-avatar cb-avatar-sm" alt="">
+                                    <div>
+                                        <span class="fw-bold">{{ s.get_display_name }}</span>
+                                        <span class="text-muted small">(@{{ s.username }})</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if s.is_superuser %}
+                                    <span class="badge bg-danger">Superuser</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Staff Admin</span>
+                                {% endif %}
+                            </td>
+                            <td><i class="bi bi-check-circle-fill text-success"></i> Allowed</td>
+                            <td><i class="bi bi-check-circle-fill text-success"></i> Allowed</td>
+                            <td>
+                                {% if s.is_superuser %}
+                                    <i class="bi bi-check-circle-fill text-success"></i> Unrestricted
+                                {% else %}
+                                    <span class="text-muted"><i class="bi bi-lock me-1"></i>Logged Only</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if s.is_superuser %}
+                                    <i class="bi bi-check-circle-fill text-success"></i> Active
+                                {% else %}
+                                    <i class="bi bi-x-circle text-muted"></i> No
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

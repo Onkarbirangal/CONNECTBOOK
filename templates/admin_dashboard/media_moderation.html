@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Media Moderation | Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 py-md-4 px-2 px-md-4">
+    <div class="d-flex align-items-md-center justify-content-between flex-column flex-md-row gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1 fs-3 fs-md-2"><i class="bi bi-camera-video text-primary me-2"></i>Media Moderation</h2>
+            <div class="text-muted small">Audit, inspect, and remove violating community videos and reels.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'admin_dashboard:streams_moderation' %}" class="btn btn-outline-danger btn-sm py-2">
+                <i class="bi bi-broadcast me-1"></i> Live Streams Moderation
+            </a>
+            <a href="{% url 'admin_dashboard:overview' %}" class="btn btn-cb-secondary btn-sm py-2">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard Overview
+            </a>
+        </div>
+    </div>
+
+    <div class="cb-card p-3 p-md-4">
+        <ul class="nav nav-pills mb-3" id="mediaModTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold" id="tab-vids-btn" data-bs-toggle="pill" data-bs-target="#tab-vids" type="button" role="tab">
+                    Videos ({{ videos|length }})
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="tab-reels-btn" data-bs-toggle="pill" data-bs-target="#tab-reels" type="button" role="tab">
+                    Reels ({{ reels|length }})
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mediaModTabsContent">
+            <!-- Videos Tab -->
+            <div class="tab-pane fade show active" id="tab-vids" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Video</th>
+                                <th>Author</th>
+                                <th>Category</th>
+                                <th>Views</th>
+                                <th>Date</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in videos %}
+                                <tr>
+                                    <td class="small text-muted">#{{ v.id }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded overflow-hidden bg-dark" style="width: 50px; height: 32px; background-image: url('{{ v.get_thumbnail_url }}'); background-size: cover; background-position: center;"></div>
+                                            <div>
+                                                <a href="{% url 'social:video_detail' video_id=v.id %}" target="_blank" class="fw-bold text-decoration-none text-dark">{{ v.title|truncatechars:45 }}</a>
+                                                <div class="text-muted" style="font-size: 11px;">{{ v.duration_formatted }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'accounts:profile' username=v.author.username %}" class="text-decoration-none fw-semibold">@{{ v.author.username }}</a>
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ v.category }}</span></td>
+                                    <td>{{ v.views_count }}</td>
+                                    <td class="small text-muted">{{ v.created_at|date:"M d, Y" }}</td>
+                                    <td class="text-end">
+                                        <form action="{% url 'admin_dashboard:admin_delete_video' video_id=v.id %}" method="POST" class="d-inline" onsubmit="return confirm('Permanently remove Video #{{ v.id }}?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">No published videos found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reels Tab -->
+            <div class="tab-pane fade" id="tab-reels" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Reel Preview</th>
+                                <th>Author</th>
+                                <th>Caption</th>
+                                <th>Audio</th>
+                                <th>Views</th>
+                                <th>Date</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in reels %}
+                                <tr>
+                                    <td class="small text-muted">#{{ r.id }}</td>
+                                    <td>
+                                        <div class="rounded overflow-hidden bg-dark" style="width: 40px; height: 55px; background-image: url('{{ r.get_thumbnail_url }}'); background-size: cover; background-position: center;"></div>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'accounts:profile' username=r.author.username %}" class="text-decoration-none fw-semibold">@{{ r.author.username }}</a>
+                                    </td>
+                                    <td>
+                                        <span class="small">{{ r.caption|truncatechars:40|default:"No caption" }}</span>
+                                    </td>
+                                    <td class="small text-muted">{{ r.audio_title }}</td>
+                                    <td>{{ r.views_count }}</td>
+                                    <td class="small text-muted">{{ r.created_at|date:"M d, Y" }}</td>
+                                    <td class="text-end">
+                                        <form action="{% url 'admin_dashboard:admin_delete_reel' reel_id=r.id %}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete Reel #{{ r.id }}?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">No reels found.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

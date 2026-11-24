@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ConnectBook Creator Studio{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 1200px;">
+  <!-- Header with Date Filters & Quick Actions -->
+  <div class="cb-card p-4 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-grid-1x2-fill text-primary me-2"></i>Creator Studio</h3>
+      <p class="text-muted small mb-0">Manage your published videos, reels, posts, albums, and analyze performance metrics.</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <!-- Date Range Selector -->
+      <div class="btn-group btn-group-sm me-2 shadow-sm" role="group">
+        <a href="?days=all" class="btn {% if days == 'all' or not days %}btn-primary fw-semibold{% else %}btn-outline-secondary{% endif %}">All Time</a>
+        <a href="?days=7" class="btn {% if days == '7' %}btn-primary fw-semibold{% else %}btn-outline-secondary{% endif %}">Last 7d</a>
+        <a href="?days=30" class="btn {% if days == '30' %}btn-primary fw-semibold{% else %}btn-outline-secondary{% endif %}">Last 30d</a>
+        <a href="?days=90" class="btn {% if days == '90' %}btn-primary fw-semibold{% else %}btn-outline-secondary{% endif %}">Last 90d</a>
+      </div>
+
+      <a href="{% url 'social:upload_video' %}" class="btn btn-primary fw-semibold btn-sm">
+        <i class="bi bi-camera-video me-1"></i>Upload Video
+      </a>
+      <a href="{% url 'social:upload_reel' %}" class="btn btn-outline-danger fw-semibold btn-sm">
+        <i class="bi bi-film me-1"></i>Create Reel
+      </a>
+      <a href="{% url 'social:create_album' %}" class="btn btn-outline-success fw-semibold btn-sm">
+        <i class="bi bi-images me-1"></i>New Album
+      </a>
+      <a href="{% url 'streaming:create_stream' %}" class="btn btn-danger fw-semibold btn-sm">
+        <i class="bi bi-broadcast me-1"></i>Live Studio
+      </a>
+    </div>
+  </div>
+
+  <!-- Primary Analytics KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="cb-card p-3 border-start border-4 border-primary h-100">
+        <div class="text-muted small fw-semibold text-uppercase">Total Views & Reach</div>
+        <div class="fs-3 fw-bold my-1 text-primary">{{ total_views|default:0 }}</div>
+        <div class="text-muted small">Videos ({{ video_views_total }}) + Reels ({{ reel_views_total }}) + Posts ({{ post_views_total }})</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="cb-card p-3 border-start border-4 border-success h-100">
+        <div class="text-muted small fw-semibold text-uppercase">Followers</div>
+        <div class="fs-3 fw-bold my-1 text-success">{{ followers_count|default:0 }}</div>
+        <div class="text-muted small">Active community followers</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="cb-card p-3 border-start border-4 border-danger h-100">
+        <div class="text-muted small fw-semibold text-uppercase">Published Media</div>
+        <div class="fs-3 fw-bold my-1 text-danger">{{ total_videos|add:total_reels|add:total_photos }}</div>
+        <div class="text-muted small">{{ total_videos }} Videos &bull; {{ total_reels }} Reels &bull; {{ total_photos }} Photos</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="cb-card p-3 border-start border-4 border-info h-100">
+        <div class="text-muted small fw-semibold text-uppercase">Engagement Rate</div>
+        <div class="fs-3 fw-bold my-1 text-info">{{ engagement_rate }}%</div>
+        <div class="text-muted small">{{ total_engagements }} Total interactions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Engagement Breakdown -->
+  <div class="cb-card p-3 mb-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Audience Engagement Breakdown</h6>
+    <div class="row g-3 text-center">
+      <div class="col-6 col-md-3">
+        <div class="p-3 bg-light rounded">
+          <div class="text-danger fs-4 mb-1"><i class="bi bi-heart-fill"></i></div>
+          <div class="fs-4 fw-bold">{{ total_reactions }}</div>
+          <div class="text-muted small">Total Reactions</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 bg-light rounded">
+          <div class="text-primary fs-4 mb-1"><i class="bi bi-chat-dots-fill"></i></div>
+          <div class="fs-4 fw-bold">{{ total_comments }}</div>
+          <div class="text-muted small">Total Comments</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 bg-light rounded">
+          <div class="text-success fs-4 mb-1"><i class="bi bi-share-fill"></i></div>
+          <div class="fs-4 fw-bold">{{ total_shares }}</div>
+          <div class="text-muted small">Post Shares</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="p-3 bg-light rounded">
+          <div class="text-warning fs-4 mb-1"><i class="bi bi-bookmark-fill"></i></div>
+          <div class="fs-4 fw-bold">{{ total_saves }}</div>
+          <div class="text-muted small">Saved Bookmarks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Management Tabs -->
+  <div class="cb-card p-3 mb-4">
+    <ul class="nav nav-tabs mb-3" id="creatorTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active fw-semibold" id="videos-tab" data-bs-toggle="tab" data-bs-target="#tab-videos" type="button" role="tab">
+          <i class="bi bi-play-btn me-1"></i>Videos ({{ user_videos|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="reels-tab" data-bs-toggle="tab" data-bs-target="#tab-reels" type="button" role="tab">
+          <i class="bi bi-film me-1"></i>Reels ({{ user_reels|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="posts-tab" data-bs-toggle="tab" data-bs-target="#tab-posts" type="button" role="tab">
+          <i class="bi bi-card-text me-1"></i>Feed Posts ({{ user_posts|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="albums-tab" data-bs-toggle="tab" data-bs-target="#tab-albums" type="button" role="tab">
+          <i class="bi bi-images me-1"></i>Albums ({{ user_albums|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="drafts-tab" data-bs-toggle="tab" data-bs-target="#tab-drafts" type="button" role="tab">
+          <i class="bi bi-file-earmark me-1"></i>Drafts ({{ user_drafts|length }})
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-semibold" id="scheduled-tab" data-bs-toggle="tab" data-bs-target="#tab-scheduled" type="button" role="tab">
+          <i class="bi bi-calendar-event me-1"></i>Scheduled ({{ user_scheduled|length }})
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="creatorTabsContent">
+      <!-- Videos Tab -->
+      <div class="tab-pane fade show active" id="tab-videos" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Video</th>
+                <th>Category</th>
+                <th>Privacy</th>
+                <th>Views</th>
+                <th>Date</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in user_videos %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="rounded overflow-hidden bg-dark" style="width: 64px; height: 40px; background-image: url('{{ v.get_thumbnail_url }}'); background-size: cover; background-position: center;"></div>
+                      <div>
+                        <a href="{% url 'social:video_detail' video_id=v.id %}" class="fw-bold text-decoration-none text-dark">{{ v.title|truncatechars:40 }}</a>
+                        <div class="text-muted small" style="font-size: 11px;">{{ v.duration_formatted }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="badge bg-secondary">{{ v.category }}</span></td>
+                  <td><span class="badge bg-light text-dark border">{{ v.privacy|title }}</span></td>
+                  <td><span class="fw-semibold">{{ v.views_count }}</span></td>
+                  <td class="small text-muted">{{ v.created_at|date:"M d, Y" }}</td>
+                  <td class="text-end">
+                    <a href="{% url 'social:edit_video' video_id=v.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                    <form action="{% url 'social:delete_video' video_id=v.id %}" method="POST" class="d-inline" onsubmit="return confirm('Delete this video?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">You haven't uploaded any videos yet.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reels Tab -->
+      <div class="tab-pane fade" id="tab-reels" role="tabpanel">
+        <div class="row g-3">
+          {% for r in user_reels %}
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="cb-card h-100 overflow-hidden d-flex flex-column shadow-sm">
+                <div class="position-relative bg-dark" style="height: 220px; background-image: url('{{ r.get_thumbnail_url }}'); background-size: cover; background-position: center;">
+                  <span class="badge bg-dark bg-opacity-75 position-absolute top-0 end-0 m-2">
+                    <i class="bi bi-eye me-1"></i>{{ r.views_count }}
+                  </span>
+                  {% if r.status == 'draft' %}
+                    <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">Draft</span>
+                  {% endif %}
+                </div>
+                <div class="p-2 d-flex flex-column flex-grow-1">
+                  <div class="fw-semibold small text-truncate">{{ r.caption|default:"ConnectBook Reel" }}</div>
+                  <div class="text-muted small mb-2" style="font-size: 11px;">{{ r.created_at|date:"M d, Y" }}</div>
+                  <div class="mt-auto d-flex justify-content-between align-items-center">
+                    <a href="{% url 'social:reels' %}#reel-{{ r.id }}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 12px;">Watch</a>
+                    <form action="{% url 'social:delete_reel' reel_id=r.id %}" method="POST" class="d-inline" onsubmit="return confirm('Delete reel?');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 12px;"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted">
+              You haven't uploaded any reels yet.
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Posts Tab -->
+      <div class="tab-pane fade" id="tab-posts" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Post Content</th>
+                <th>Audience</th>
+                <th>Views</th>
+                <th>Reactions</th>
+                <th>Date</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in user_posts %}
+                <tr>
+                  <td>
+                    <div class="small fw-semibold text-truncate" style="max-width: 350px;">
+                      {{ p.content|truncatechars:70|default:"[Media Post]" }}
+                    </div>
+                  </td>
+                  <td><span class="badge bg-light text-dark border">{{ p.privacy|title }}</span></td>
+                  <td><span class="fw-semibold">{{ p.views_count }}</span></td>
+                  <td><span class="badge bg-danger bg-opacity-10 text-danger">{{ p.reactions.count }} <i class="bi bi-heart-fill ms-1"></i></span></td>
+                  <td class="small text-muted">{{ p.created_at|date:"M d, Y" }}</td>
+                  <td class="text-end">
+                    <a href="{% url 'social:edit_post' post_id=p.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No published feed posts found.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Albums Tab -->
+      <div class="tab-pane fade" id="tab-albums" role="tabpanel">
+        <div class="row g-3">
+          {% for alb in user_albums %}
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="cb-card h-100 overflow-hidden shadow-sm d-flex flex-column">
+                <div class="bg-light position-relative" style="height: 140px; background-image: url('{{ alb.get_cover_url }}'); background-size: cover; background-position: center;">
+                  <span class="badge bg-dark bg-opacity-75 position-absolute bottom-0 end-0 m-2">
+                    <i class="bi bi-images me-1"></i>{{ alb.photos.count }}
+                  </span>
+                </div>
+                <div class="p-2 d-flex flex-column flex-grow-1">
+                  <a href="{% url 'social:album_detail' album_id=alb.id %}" class="fw-bold text-dark text-decoration-none small text-truncate">{{ alb.title }}</a>
+                  <div class="text-muted small" style="font-size: 11px;">{{ alb.privacy|title }} &bull; {{ alb.created_at|date:"M d, Y" }}</div>
+                  <div class="mt-auto pt-2 d-flex justify-content-between">
+                    <a href="{% url 'social:album_detail' album_id=alb.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 12px;">Open</a>
+                    <a href="{% url 'social:edit_album' album_id=alb.id %}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 12px;"><i class="bi bi-pencil"></i></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12 text-center py-4 text-muted">
+              No photo albums created yet.
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Drafts Tab -->
+      <div class="tab-pane fade" id="tab-drafts" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Draft Content</th>
+                <th>Created</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in user_drafts %}
+                <tr>
+                  <td>
+                    <div class="small fw-semibold text-truncate" style="max-width: 400px;">
+                      {{ d.content|truncatechars:80|default:"[Draft Attachment]" }}
+                    </div>
+                  </td>
+                  <td class="small text-muted">{{ d.created_at|date:"M d, Y H:i" }}</td>
+                  <td class="text-end">
+                    <a href="{% url 'social:edit_post' post_id=d.id %}" class="btn btn-sm btn-primary">
+                      <i class="bi bi-pencil me-1"></i>Continue Editing
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center py-4 text-muted">You have no saved drafts.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Scheduled Tab -->
+      <div class="tab-pane fade" id="tab-scheduled" role="tabpanel">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Scheduled Content</th>
+                <th>Scheduled Date & Time</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in user_scheduled %}
+                <tr>
+                  <td>
+                    <div class="small fw-semibold text-truncate" style="max-width: 400px;">
+                      {{ s.content|truncatechars:80 }}
+                    </div>
+                  </td>
+                  <td class="small fw-semibold text-primary">
+                    <i class="bi bi-clock me-1"></i>{{ s.scheduled_at|date:"M d, Y • h:i A" }}
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'social:edit_post' post_id=s.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center py-4 text-muted">No scheduled posts pending.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

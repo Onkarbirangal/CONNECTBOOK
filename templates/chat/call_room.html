@@ -1,0 +1,525 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ConnectBook {{ call_type|title }} Call - {{ peer.get_display_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .call-container {
+    position: relative;
+    background-color: #0f172a;
+    border-radius: 16px;
+    overflow: hidden;
+    height: calc(100vh - 120px);
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  }
+
+  .call-video-grid {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    background: #020617;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #remoteVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .local-video-pip {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    width: 200px;
+    height: 130px;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+    background: #1e293b;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+  }
+
+  #localVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  .call-overlay-header {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    z-index: 15;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .call-overlay-header > * {
+    pointer-events: auto;
+  }
+
+  .peer-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    padding: 8px 16px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .call-controls-bar {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    padding: 12px 24px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 20;
+  }
+
+  .call-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    border: none;
+    transition: all 0.2s ease;
+    color: white;
+  }
+
+  .call-btn-default {
+    background: #334155;
+  }
+  .call-btn-default:hover {
+    background: #475569;
+  }
+  .call-btn-default.off {
+    background: #ef4444;
+    color: white;
+  }
+
+  .call-btn-hangup {
+    background: #dc2626;
+    width: 54px;
+    height: 54px;
+    font-size: 1.5rem;
+  }
+  .call-btn-hangup:hover {
+    background: #b91c1c;
+    transform: scale(1.05);
+  }
+
+  .audio-call-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: white;
+  }
+
+  .audio-avatar-pulse {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+  }
+
+  .audio-avatar-pulse img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #3b82f6;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+  <div class="call-container" id="callContainer">
+    <!-- Top info bar -->
+    <div class="call-overlay-header">
+      <div class="peer-card text-white">
+        <img src="{{ peer.profile.get_avatar_url }}" alt="{{ peer.get_display_name }}" class="rounded-circle" style="width: 38px; height: 38px; object-fit: cover;">
+        <div>
+          <h6 class="mb-0 fw-bold">{{ peer.get_display_name }}</h6>
+          <small class="text-white-50">@{{ peer.username }}</small>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="status-badge bg-warning text-dark" id="callStatusBadge">
+          <i class="bi bi-telephone-outbound me-1"></i>
+          {% if is_caller %}Calling...{% else %}Incoming Call...{% endif %}
+        </span>
+        <span class="badge bg-dark bg-opacity-75 text-white py-2 px-3 rounded-pill d-none" id="callDuration">
+          00:00
+        </span>
+      </div>
+    </div>
+
+    <!-- Video Stage -->
+    <div class="call-video-grid" id="videoGrid">
+      <video id="remoteVideo" autoplay playsinline></video>
+
+      <!-- Audio placeholder fallback or state -->
+      <div class="audio-call-placeholder d-none" id="audioPlaceholder">
+        <div class="audio-avatar-pulse">
+          <img src="{{ peer.profile.get_avatar_url }}" alt="{{ peer.get_display_name }}">
+        </div>
+        <h4 class="fw-bold mb-0 text-white">{{ peer.get_display_name }}</h4>
+        <p class="text-white-50 mb-0">Voice Connected</p>
+      </div>
+
+      <!-- Local Video PiP -->
+      <div class="local-video-pip" id="localVideoContainer">
+        <video id="localVideo" autoplay playsinline muted></video>
+      </div>
+    </div>
+
+    <!-- Floating Action Controls Bar -->
+    <div class="call-controls-bar">
+      <!-- Mute Mic -->
+      <button class="call-btn call-btn-default" id="btnToggleMic" title="Mute/Unmute Mic">
+        <i class="bi bi-mic-fill" id="micIcon"></i>
+      </button>
+
+      <!-- Video On/Off -->
+      <button class="call-btn call-btn-default" id="btnToggleVideo" title="Camera On/Off">
+        <i class="bi bi-camera-video-fill" id="videoIcon"></i>
+      </button>
+
+      <!-- Screen Share -->
+      <button class="call-btn call-btn-default" id="btnShareScreen" title="Share Screen">
+        <i class="bi bi-display"></i>
+      </button>
+
+      <!-- Fullscreen -->
+      <button class="call-btn call-btn-default" id="btnFullscreen" title="Toggle Fullscreen">
+        <i class="bi bi-arrows-fullscreen"></i>
+      </button>
+
+      <!-- Hang Up -->
+      <button class="call-btn call-btn-hangup" id="btnHangup" title="End Call">
+        <i class="bi bi-telephone-x-fill"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const ROOM_NAME = "{{ room_name }}";
+    const IS_CALLER = {{ is_caller|yesno:"true,false" }};
+    const CALL_TYPE = "{{ call_type }}";
+    const PEER_NAME = "{{ peer.get_display_name }}";
+    const END_CALL_URL = "{% url 'chat:end_call_http' room_name=room_name %}";
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const statusBadge = document.getElementById('callStatusBadge');
+    const durationBadge = document.getElementById('callDuration');
+    const btnToggleMic = document.getElementById('btnToggleMic');
+    const btnToggleVideo = document.getElementById('btnToggleVideo');
+    const btnShareScreen = document.getElementById('btnShareScreen');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+    const btnHangup = document.getElementById('btnHangup');
+    const audioPlaceholder = document.getElementById('audioPlaceholder');
+    const localVideoContainer = document.getElementById('localVideoContainer');
+
+    let localStream = null;
+    let peerConnection = null;
+    let ws = null;
+    let callTimer = null;
+    let secondsElapsed = 0;
+    let isScreenSharing = false;
+
+    // Free public STUN configuration
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    // Initialize media stream
+    async function initMedia() {
+      try {
+        const constraints = {
+          audio: true,
+          video: CALL_TYPE === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
+        };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (localVideo && CALL_TYPE === 'video') {
+          localVideo.srcObject = localStream;
+        } else {
+          localVideoContainer.classList.add('d-none');
+          audioPlaceholder.classList.remove('d-none');
+        }
+      } catch (err) {
+        console.warn("Could not acquire media devices:", err);
+        statusBadge.className = 'status-badge bg-danger text-white';
+        statusBadge.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i> Media access error';
+      }
+    }
+
+    // Connect WebSocket Signaling
+    function initWebSocket() {
+      const wsScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+      const wsUrl = wsScheme + window.location.host + '/ws/call/' + ROOM_NAME + '/';
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log("Call signaling connected.");
+        initPeerConnection();
+        if (IS_CALLER) {
+          sendOffer();
+        }
+      };
+
+      ws.onmessage = async (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          handleSignalingMessage(msg);
+        } catch (err) {
+          console.error("Signaling error:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("Call signaling closed.");
+      };
+    }
+
+    function initPeerConnection() {
+      peerConnection = new RTCPeerConnection(rtcConfig);
+
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+      }
+
+      peerConnection.ontrack = (event) => {
+        if (remoteVideo) {
+          remoteVideo.srcObject = event.streams[0];
+          if (CALL_TYPE === 'video') {
+            audioPlaceholder.classList.add('d-none');
+          }
+        }
+      };
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            action: 'ice-candidate',
+            candidate: event.candidate
+          }));
+        }
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        if (peerConnection.connectionState === 'connected') {
+          setCallConnected();
+        } else if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') {
+          setCallEnded();
+        }
+      };
+    }
+
+    async function sendOffer() {
+      if (!peerConnection) return;
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      ws.send(JSON.stringify({
+        action: 'offer',
+        offer: offer
+      }));
+    }
+
+    async function handleSignalingMessage(msg) {
+      if (!peerConnection) return;
+
+      if (msg.action === 'offer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        ws.send(JSON.stringify({
+          action: 'answer',
+          answer: answer
+        }));
+        ws.send(JSON.stringify({ action: 'call-accept' }));
+        setCallConnected();
+      } else if (msg.action === 'answer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(msg.answer));
+        setCallConnected();
+      } else if (msg.action === 'ice-candidate') {
+        try {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate));
+        } catch (e) {
+          console.error("Error adding ice candidate", e);
+        }
+      } else if (msg.action === 'call-end' || msg.action === 'peer-left') {
+        setCallEnded();
+      }
+    }
+
+    function setCallConnected() {
+      statusBadge.className = 'status-badge bg-success text-white';
+      statusBadge.innerHTML = '<i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i> Connected';
+      durationBadge.classList.remove('d-none');
+
+      if (!callTimer) {
+        callTimer = setInterval(() => {
+          secondsElapsed++;
+          const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+          const secs = String(secondsElapsed % 60).padStart(2, '0');
+          durationBadge.textContent = `${mins}:${secs}`;
+        }, 1000);
+      }
+    }
+
+    function setCallEnded() {
+      if (callTimer) clearInterval(callTimer);
+      statusBadge.className = 'status-badge bg-secondary text-white';
+      statusBadge.innerHTML = '<i class="bi bi-telephone-x me-1"></i> Call Ended';
+      setTimeout(() => {
+        window.location.href = "{% url 'chat:inbox' %}";
+      }, 1500);
+    }
+
+    // Toggle Mic
+    btnToggleMic.addEventListener('click', () => {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = !audioTrack.enabled;
+          btnToggleMic.classList.toggle('off', !audioTrack.enabled);
+          document.getElementById('micIcon').className = audioTrack.enabled ? 'bi bi-mic-fill' : 'bi bi-mic-mute-fill';
+        }
+      }
+    });
+
+    // Toggle Video
+    btnToggleVideo.addEventListener('click', () => {
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = !videoTrack.enabled;
+          btnToggleVideo.classList.toggle('off', !videoTrack.enabled);
+          document.getElementById('videoIcon').className = videoTrack.enabled ? 'bi bi-camera-video-fill' : 'bi bi-camera-video-off-fill';
+        }
+      }
+    });
+
+    // Share Screen
+    btnShareScreen.addEventListener('click', async () => {
+      if (!isScreenSharing) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          const screenTrack = screenStream.getVideoTracks()[0];
+
+          if (peerConnection) {
+            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) sender.replaceTrack(screenTrack);
+          }
+
+          if (localVideo) localVideo.srcObject = screenStream;
+          isScreenSharing = true;
+          btnShareScreen.classList.add('bg-primary');
+
+          screenTrack.onended = () => {
+            stopScreenSharing();
+          };
+        } catch (err) {
+          console.warn("Screen share cancelled:", err);
+        }
+      } else {
+        stopScreenSharing();
+      }
+    });
+
+    function stopScreenSharing() {
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (peerConnection) {
+          const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender && videoTrack) sender.replaceTrack(videoTrack);
+        }
+        if (localVideo) localVideo.srcObject = localStream;
+      }
+      isScreenSharing = false;
+      btnShareScreen.classList.remove('bg-primary');
+    }
+
+    // Fullscreen
+    btnFullscreen.addEventListener('click', () => {
+      const container = document.getElementById('callContainer');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => alert(err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Hangup
+    btnHangup.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action: 'call-end' }));
+      }
+      if (peerConnection) peerConnection.close();
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+      }
+      // Notify backend via HTTP
+      fetch(END_CALL_URL, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      }).finally(() => {
+        window.location.href = "{% url 'chat:inbox' %}";
+      });
+    });
+
+    // Startup flow
+    initMedia().then(() => {
+      initWebSocket();
+    });
+
+  })();
+</script>
+{% endblock %}

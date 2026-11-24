@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Saved Items | ConnectBook{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h3 class="fw-bold mb-0"><i class="bi bi-bookmark-fill text-purple me-2" style="color: #9333EA;"></i>Saved Posts</h3>
+    </div>
+    <!-- Collections Filter Pills -->
+    {% if collections %}
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="{% url 'social:saved_posts' %}" class="btn btn-sm {% if not selected_collection %}btn-primary text-white{% else %}btn-light text-muted border{% endif %} rounded-pill px-3">
+            All Items
+        </a>
+        {% for col in collections %}
+            <a href="{% url 'social:saved_posts' %}?collection={{ col }}" class="btn btn-sm {% if selected_collection == col %}btn-primary text-white{% else %}btn-light text-muted border{% endif %} rounded-pill px-3">
+                <i class="bi bi-folder2 me-1"></i> {{ col }}
+            </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if saved_items %}
+        {% for item in saved_items %}
+            {% include 'includes/post_card.html' with post=item.post %}
+        {% endfor %}
+    {% else %}
+        <div class="cb-card text-center p-5 text-muted">
+            <i class="bi bi-bookmark fs-1 mb-2"></i>
+            <h5>No Saved Posts</h5>
+            <p class="small">Save posts to read or watch later. Click the three dots on any post and select "Save Post".</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

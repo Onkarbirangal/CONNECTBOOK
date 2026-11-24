@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page.name }} | ConnectBook Page{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 950px;">
+    <!-- Page Header Card -->
+    <div class="cb-card mb-4 overflow-hidden">
+        <!-- Cover Photo -->
+        <div style="height: 220px; background-image: url('{{ page.get_cover_url }}'); background-size: cover; background-position: center;" class="position-relative">
+            {% if can_manage %}
+                <a href="{% url 'pages_app:edit_page' slug=page.slug %}" class="btn btn-sm btn-light position-absolute top-0 end-0 m-3 shadow-sm">
+                    <i class="bi bi-camera me-1"></i>Edit Cover
+                </a>
+            {% endif %}
+        </div>
+
+        <!-- Header Info Bar -->
+        <div class="p-4 pt-0">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3" style="margin-top: -45px;">
+                <div class="d-flex align-items-end gap-3 flex-wrap">
+                    <img src="{{ page.get_avatar_url }}" class="rounded-circle border border-4 border-white shadow" style="width: 100px; height: 100px; object-fit: cover; background: white;" alt="">
+                    <div>
+                        <h3 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                            {{ page.name }}
+                            {% if page.is_verified %}
+                                <i class="bi bi-patch-check-fill text-primary fs-5" title="Verified Page"></i>
+                            {% endif %}
+                        </h3>
+                        <div class="text-muted small">
+                            <span class="badge bg-secondary-subtle text-secondary me-2">{{ page.get_category_display }}</span>
+                            <span>{{ page.total_followers }} follower{{ page.total_followers|pluralize }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Action Buttons -->
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{% url 'pages_app:toggle_follow' slug=page.slug %}" class="btn {% if is_following %}btn-secondary{% else %}btn-cb-primary{% endif %} px-4 fw-semibold">
+                        {% if is_following %}
+                            <i class="bi bi-check-lg me-1"></i>Following
+                        {% else %}
+                            <i class="bi bi-plus-lg me-1"></i>Follow Page
+                        {% endif %}
+                    </a>
+                    {% if can_manage %}
+                        <a href="{% url 'pages_app:page_analytics' slug=page.slug %}" class="btn btn-outline-primary" title="Page Analytics">
+                            <i class="bi bi-bar-chart-line-fill me-1"></i>Analytics
+                        </a>
+                        <a href="{% url 'pages_app:edit_page' slug=page.slug %}" class="btn btn-cb-secondary" title="Edit Settings">
+                            <i class="bi bi-gear-fill"></i>
+                        </a>
+                        <a href="{% url 'pages_app:delete_page' slug=page.slug %}" class="btn btn-outline-danger" title="Delete Page">
+                            <i class="bi bi-trash3"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if page.bio %}
+                <p class="text-muted mb-0">{{ page.bio }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="row g-4">
+        <!-- Left Sidebar: About Info -->
+        <div class="col-lg-4">
+            <div class="cb-card p-3 mb-4">
+                <h6 class="fw-bold mb-3 border-bottom pb-2">About Page</h6>
+                {% if page.description %}
+                    <p class="small text-muted mb-3">{{ page.description }}</p>
+                {% endif %}
+
+                <div class="vstack gap-2 small text-muted">
+                    {% if page.category %}
+                        <div><i class="bi bi-tag-fill me-2 text-primary"></i>{{ page.get_category_display }}</div>
+                    {% endif %}
+                    {% if page.website %}
+                        <div><i class="bi bi-globe me-2 text-primary"></i><a href="{{ page.website }}" target="_blank" class="text-decoration-none">{{ page.website }}</a></div>
+                    {% endif %}
+                    {% if page.email %}
+                        <div><i class="bi bi-envelope-fill me-2 text-primary"></i>{{ page.email }}</div>
+                    {% endif %}
+                    {% if page.phone %}
+                        <div><i class="bi bi-telephone-fill me-2 text-primary"></i>{{ page.phone }}</div>
+                    {% endif %}
+                    {% if page.address %}
+                        <div><i class="bi bi-geo-alt-fill me-2 text-primary"></i>{{ page.address }}</div>
+                    {% endif %}
+                    <div><i class="bi bi-calendar-event me-2 text-primary"></i>Created {{ page.created_at|date:"F Y" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Post Composer & Timeline -->
+        <div class="col-lg-8">
+            {% if can_manage %}
+                <div class="cb-card p-3 mb-4">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="create_page_post" value="1">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <img src="{{ page.get_avatar_url }}" class="rounded-circle" style="width: 38px; height: 38px; object-fit: cover;" alt="">
+                            <span class="fw-semibold small">Post as {{ page.name }}</span>
+                        </div>
+                        <textarea name="content" class="form-control mb-2" rows="2" placeholder="Write an update for your followers..."></textarea>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label class="btn btn-sm btn-light border mb-0" style="cursor: pointer;">
+                                <i class="bi bi-image text-success me-1"></i>Photo/Video
+                                <input type="file" name="media" multiple accept="image/*,video/*" class="d-none">
+                            </label>
+                            <button type="submit" class="btn btn-sm btn-cb-primary px-3 fw-semibold">Publish Post</button>
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+
+            <!-- Posts Stream -->
+            {% if posts %}
+                {% for post in posts %}
+                    {% include 'social/includes/post_card.html' with post=post %}
+                {% endfor %}
+            {% else %}
+                <div class="cb-card p-5 text-center text-muted">
+                    <i class="bi bi-newspaper fs-1 d-block mb-2"></i>
+                    <h6>No posts published yet.</h6>
+                    {% if can_manage %}
+                        <p class="small">Share your first update with your followers above!</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

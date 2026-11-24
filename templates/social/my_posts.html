@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage My Posts – ConnectBook{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="max-width: 1200px;">
+    <div class="row">
+        <!-- Sidebar Navigation -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm" style="background: var(--cb-card); border-radius: var(--cb-radius);">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom" style="border-color: var(--cb-border) !important;">
+                        <img src="{{ current_user_profile.get_avatar_url }}" class="cb-avatar" alt="">
+                        <div>
+                            <div class="fw-bold">{{ user.get_display_name }}</div>
+                            <div class="text-muted small">@{{ user.username }}</div>
+                        </div>
+                    </div>
+
+                    <div class="nav flex-column nav-pills gap-1">
+                        <a href="{% url 'social:my_posts' %}?tab=published" class="nav-link {% if active_tab == 'published' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-file-earmark-post me-2"></i>Published</span>
+                            <span class="badge bg-primary rounded-pill">{{ count_published }}</span>
+                        </a>
+                        <a href="{% url 'social:my_posts' %}?tab=drafts" class="nav-link {% if active_tab == 'drafts' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-pencil-square me-2 text-warning"></i>Drafts</span>
+                            <span class="badge bg-secondary rounded-pill">{{ count_drafts }}</span>
+                        </a>
+                        <a href="{% url 'social:my_posts' %}?tab=scheduled" class="nav-link {% if active_tab == 'scheduled' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-clock-history me-2 text-info"></i>Scheduled</span>
+                            <span class="badge bg-info rounded-pill">{{ count_scheduled }}</span>
+                        </a>
+                        <a href="{% url 'social:my_posts' %}?tab=archived" class="nav-link {% if active_tab == 'archived' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-archive me-2 text-secondary"></i>Archived</span>
+                            <span class="badge bg-secondary rounded-pill">{{ count_archived }}</span>
+                        </a>
+                        <a href="{% url 'social:my_posts' %}?tab=trashed" class="nav-link {% if active_tab == 'trashed' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-trash me-2 text-danger"></i>Trash</span>
+                            <span class="badge bg-danger rounded-pill">{{ count_trashed }}</span>
+                        </a>
+                        <a href="{% url 'social:my_posts' %}?tab=saved" class="nav-link {% if active_tab == 'saved' %}active{% endif %} d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-bookmark-fill me-2 text-purple" style="color: #9333EA;"></i>Saved Posts</span>
+                            <span class="badge bg-secondary rounded-pill">{{ count_saved }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Composer Launcher -->
+            <div class="card border-0 shadow-sm mt-3" style="background: var(--cb-card); border-radius: var(--cb-radius);">
+                <div class="card-body p-3 text-center">
+                    <button class="btn btn-cb-primary w-100 rounded-pill py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                        <i class="bi bi-plus-lg me-1"></i> Create New Post
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-lg-9">
+            <!-- Header Bar -->
+            <div class="card border-0 shadow-sm mb-3" style="background: var(--cb-card); border-radius: var(--cb-radius);">
+                <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-capitalize">
+                            {% if active_tab == 'trashed' %}
+                                <i class="bi bi-trash-fill text-danger me-2"></i>Trash Bin
+                            {% elif active_tab == 'scheduled' %}
+                                <i class="bi bi-clock-fill text-info me-2"></i>Scheduled Posts
+                            {% elif active_tab == 'drafts' %}
+                                <i class="bi bi-pencil-fill text-warning me-2"></i>Draft Posts
+                            {% elif active_tab == 'archived' %}
+                                <i class="bi bi-archive-fill text-secondary me-2"></i>Archived Posts
+                            {% elif active_tab == 'saved' %}
+                                <i class="bi bi-bookmark-fill text-primary me-2"></i>Saved Posts
+                            {% else %}
+                                <i class="bi bi-collection-fill text-primary me-2"></i>Published Posts
+                            {% endif %}
+                        </h5>
+                        <div class="text-muted small">
+                            {% if active_tab == 'trashed' %}
+                                Items in Trash are automatically purged after 30 days. You can restore or permanently delete them here.
+                            {% elif active_tab == 'scheduled' %}
+                                Posts scheduled to publish automatically at a future date and time.
+                            {% else %}
+                                Manage, analyze, edit, and organize your posts.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Post Type Filter -->
+                    <form method="GET" class="d-flex align-items-center gap-2 m-0">
+                        <input type="hidden" name="tab" value="{{ active_tab }}">
+                        <select name="type" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
+                            <option value="">All Post Types</option>
+                            <option value="text" {% if selected_type == 'text' %}selected{% endif %}>Text Posts</option>
+                            <option value="photo" {% if selected_type == 'photo' %}selected{% endif %}>Photo Posts</option>
+                            <option value="video" {% if selected_type == 'video' %}selected{% endif %}>Video Posts</option>
+                            <option value="poll" {% if selected_type == 'poll' %}selected{% endif %}>Polls</option>
+                            <option value="milestone" {% if selected_type == 'milestone' %}selected{% endif %}>Milestones</option>
+                            <option value="feeling" {% if selected_type == 'feeling' %}selected{% endif %}>Feelings & Activities</option>
+                            <option value="link" {% if selected_type == 'link' %}selected{% endif %}>Link Shares</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Posts List -->
+            {% if posts %}
+                <div class="vstack gap-3">
+                    {% for post in posts %}
+                        {% if active_tab == 'trashed' %}
+                            <!-- Trashed Post Card with Restore / Delete Controls -->
+                            <div class="card border-0 shadow-sm" style="background: var(--cb-card); border-radius: var(--cb-radius);">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-danger-subtle text-danger"><i class="bi bi-trash me-1"></i>In Trash</span>
+                                            <span class="text-muted small">Moved to trash {{ post.trashed_at|timesince|default:post.updated_at|timesince }} ago</span>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <form action="{% url 'social:manage_trash_post' post_id=post.id %}" method="POST" class="m-0">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="restore">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
+                                                </button>
+                                            </form>
+                                            <form action="{% url 'social:manage_trash_post' post_id=post.id %}" method="POST" onsubmit="return confirm('Permanently delete this post? This action cannot be undone.');" class="m-0">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="permanent_delete">
+                                                <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3">
+                                                    <i class="bi bi-trash-fill me-1"></i> Delete Permanently
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 rounded bg-light bg-opacity-50 text-muted">
+                                        {{ post.content|truncatechars:180|default:'(No text content)' }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Normal Card (includes actions, reactions, lightbox) -->
+                            {% include 'includes/post_card.html' with post=post %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm text-center py-5" style="background: var(--cb-card); border-radius: var(--cb-radius);">
+                    <div class="card-body">
+                        <i class="bi bi-file-earmark-x text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="fw-bold mt-3">No posts found in {{ active_tab }}</h5>
+                        <p class="text-muted small">You don't have any {{ active_tab }} posts matching your criteria.</p>
+                        <button class="btn btn-cb-primary rounded-pill px-4 mt-2" data-bs-toggle="modal" data-bs-target="#createPostModal">
+                            <i class="bi bi-plus-lg me-1"></i> Create a Post
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% include 'includes/post_composer_modal.html' %}
+{% endblock %}
