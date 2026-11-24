@@ -6,6 +6,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.sessions.models import Session
 from django.db.models import Q
 from django.contrib.auth import get_user_model
@@ -70,6 +71,8 @@ def login_view(request):
                     else:
                         request.session.set_expiry(1209600) # 2 weeks
                     next_url = request.GET.get('next')
+                    if next_url and not url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+                        next_url = None
                     return redirect(next_url if next_url else 'social:feed')
 
             messages.error(request, "Invalid username/email or password.")
@@ -127,10 +130,20 @@ def profile_view(request, username):
 
     # Check visibility permissions
     is_locked = bool(profile and profile.is_locked)
+    profile_vis = 'public'
+    if privacy_settings and privacy_settings.profile_visibility:
+        profile_vis = privacy_settings.profile_visibility
+    elif profile and profile.profile_visibility:
+        profile_vis = profile.profile_visibility
+
     if is_locked and not (is_own_profile or are_friends):
         can_view_content = False
+    elif profile_vis == 'private' and not is_own_profile:
+        can_view_content = False
+    elif profile_vis == 'friends' and not (is_own_profile or are_friends):
+        can_view_content = False
     else:
-        can_view_content = is_own_profile or are_friends or (privacy_settings and privacy_settings.profile_visibility == 'public') or (profile and profile.profile_visibility == 'public')
+        can_view_content = True
 
     if tab == 'posts' and can_view_content:
         posts_filter = Q(author=profile_user, group__isnull=True, is_trashed=False)
@@ -149,8 +162,10 @@ def profile_view(request, username):
         posts = [p for p in raw_posts if p.can_view(request.user)]
 
     elif tab == 'friends':
-        fl_vis = privacy_settings.friends_list_visibility
-        if fl_vis == 'private' and not is_own_profile:
+        fl_vis = privacy_settings.friends_list_visibility if privacy_settings else 'public'
+        if is_locked and not (is_own_profile or are_friends):
+            friends_hidden = True
+        elif fl_vis == 'private' and not is_own_profile:
             friends_hidden = True
         elif fl_vis == 'friends' and not (are_friends or is_own_profile):
             friends_hidden = True
@@ -160,21 +175,23 @@ def profile_view(request, username):
 
     elif tab == 'photos':
         from social.models import PhotoAlbum, AlbumPhoto
-        if subtab == 'albums':
-            raw_albums = PhotoAlbum.objects.filter(user=profile_user).prefetch_related('photos')
-            albums = [a for a in raw_albums if a.can_view(request.user)]
-        elif subtab == 'photos_of_you':
-            photos = AlbumPhoto.objects.filter(tagged_users=profile_user).select_related('user')
-        else:
-            post_photos = list(PostMedia.objects.filter(post__author=profile_user, media_type='image', post__is_trashed=False).select_related('post'))
-            album_photos = list(AlbumPhoto.objects.filter(user=profile_user))
-            photos = post_photos + album_photos
-            albums = PhotoAlbum.objects.filter(user=profile_user)
+        if can_view_content:
+            if subtab == 'albums':
+                raw_albums = PhotoAlbum.objects.filter(user=profile_user).prefetch_related('photos')
+                albums = [a for a in raw_albums if a.can_view(request.user)]
+            elif subtab == 'photos_of_you':
+                photos = AlbumPhoto.objects.filter(tagged_users=profile_user).select_related('user')
+            else:
+                post_photos = list(PostMedia.objects.filter(post__author=profile_user, media_type='image', post__is_trashed=False).select_related('post'))
+                album_photos = list(AlbumPhoto.objects.filter(user=profile_user))
+                photos = post_photos + album_photos
+                albums = PhotoAlbum.objects.filter(user=profile_user)
 
     elif tab == 'videos':
         from social.models import Video
-        videos = Video.objects.filter(author=profile_user).select_related('author')
-        post_videos = PostMedia.objects.filter(post__author=profile_user, media_type='video', post__is_trashed=False).select_related('post')
+        if can_view_content:
+            videos = Video.objects.filter(author=profile_user).select_related('author')
+            post_videos = PostMedia.objects.filter(post__author=profile_user, media_type='video', post__is_trashed=False).select_related('post')
 
     elif tab == 'reels':
         from social.models import Reel
@@ -185,21 +202,24 @@ def profile_view(request, username):
 
     elif tab == 'stories':
         from stories.models import Story, StoryHighlight
-        story_highlights = StoryHighlight.objects.filter(user=profile_user).prefetch_related('stories')
-        raw_stories = Story.objects.filter(author=profile_user, expires_at__gt=timezone.now()).order_by('created_at')
-        active_stories = [s for s in raw_stories if s.can_view(request.user)]
+        if can_view_content:
+            story_highlights = StoryHighlight.objects.filter(user=profile_user).prefetch_related('stories')
+            raw_stories = Story.objects.filter(author=profile_user, expires_at__gt=timezone.now()).order_by('created_at')
+            active_stories = [s for s in raw_stories if s.can_view(request.user)]
 
     elif tab == 'checkins':
-        raw_checkins = Post.objects.filter(
-            author=profile_user,
-            group__isnull=True,
-            is_trashed=False
-        ).exclude(location_name='').select_related('author', 'author__profile').prefetch_related('media_files', 'reactions', 'comments').order_by('-created_at')
-        checkin_posts = [p for p in raw_checkins if p.can_view(request.user)]
+        if can_view_content:
+            raw_checkins = Post.objects.filter(
+                author=profile_user,
+                group__isnull=True,
+                is_trashed=False
+            ).exclude(location_name='').select_related('author', 'author__profile').prefetch_related('media_files', 'reactions', 'comments').order_by('-created_at')
+            checkin_posts = [p for p in raw_checkins if p.can_view(request.user)]
 
     elif tab == 'likes':
-        liked_reactions = Reaction.objects.filter(user=profile_user).select_related('post', 'post__author', 'post__author__profile').order_by('-created_at')[:40]
-        liked_posts = [r.post for r in liked_reactions if r.post and not r.post.is_trashed and r.post.can_view(request.user)]
+        if can_view_content:
+            liked_reactions = Reaction.objects.filter(user=profile_user).select_related('post', 'post__author', 'post__author__profile').order_by('-created_at')[:40]
+            liked_posts = [r.post for r in liked_reactions if r.post and not r.post.is_trashed and r.post.can_view(request.user)]
 
     elif tab == 'saved' and is_own_profile:
         saved_posts = SavedPost.objects.filter(user=request.user).select_related('post', 'post__author', 'post__author__profile').order_by('-saved_at')
@@ -297,8 +317,15 @@ def edit_profile_view(request):
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
+            # Synchronize profile_visibility to UserPrivacySetting
+            privacy_setting, _ = UserPrivacySetting.objects.get_or_create(user=request.user)
+            if privacy_setting.profile_visibility != profile.profile_visibility:
+                privacy_setting.profile_visibility = profile.profile_visibility
+                privacy_setting.save(update_fields=['profile_visibility'])
             messages.success(request, "Your profile has been updated successfully!")
             return redirect('accounts:profile', username=request.user.username)
+        else:
+            messages.error(request, "Please correct the errors below.")
     else:
         user_form = UserBasicInfoForm(instance=request.user)
         profile_form = UserProfileForm(instance=profile)
@@ -365,6 +392,10 @@ def toggle_block_user_view(request, user_id):
         FriendRequest.objects.filter(
             Q(sender=request.user, receiver=target_user) | Q(sender=target_user, receiver=request.user)
         ).delete()
+        # Clean up Follow relationships in both directions
+        Follow.objects.filter(
+            Q(follower=request.user, followed=target_user) | Q(follower=target_user, followed=request.user)
+        ).delete()
         messages.info(request, f"You have blocked {target_user.get_display_name()}.")
 
     return redirect('accounts:settings')
@@ -406,6 +437,11 @@ def privacy_settings_view(request):
         form = UserPrivacySettingForm(request.POST, instance=privacy_setting)
         if form.is_valid():
             form.save()
+            # Synchronize profile_visibility to UserProfile
+            profile, _ = UserProfile.objects.get_or_create(user=request.user)
+            if profile.profile_visibility != privacy_setting.profile_visibility:
+                profile.profile_visibility = privacy_setting.profile_visibility
+                profile.save(update_fields=['profile_visibility'])
             messages.success(request, "Your privacy settings have been updated successfully.")
             return redirect('accounts:privacy_settings')
         else:
@@ -549,6 +585,13 @@ def your_information_view(request):
         
         posts = []
         for p in Post.objects.filter(author=request.user):
+            m_urls = []
+            for m in p.media_files.all():
+                if m.file:
+                    try:
+                        m_urls.append(m.file.url)
+                    except Exception:
+                        pass
             posts.append({
                 'id': p.id,
                 'content': p.content,
@@ -556,7 +599,7 @@ def your_information_view(request):
                 'created_at': p.created_at.isoformat(),
                 'reactions_count': p.reactions.count(),
                 'comments_count': p.comments.count(),
-                'media_files': [m.file.url for m in p.media_files.all() if m.file],
+                'media_files': m_urls,
             })
 
         comments = []
@@ -664,6 +707,16 @@ def toggle_follow_view(request, username):
         messages.error(request, "You cannot follow yourself.")
         return redirect('accounts:profile', username=username)
 
+    # Check if blocked in either direction
+    is_blocked = BlockedUser.objects.filter(
+        Q(blocker=request.user, blocked=target_user) | Q(blocker=target_user, blocked=request.user)
+    ).exists()
+    if is_blocked:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json':
+            return JsonResponse({'status': 'error', 'message': 'Cannot follow a blocked user.'}, status=403)
+        messages.error(request, "Cannot follow a blocked user.")
+        return redirect('social:feed')
+
     follow_rel = Follow.objects.filter(follower=request.user, followed=target_user).first()
     if follow_rel:
         follow_rel.delete()
@@ -689,20 +742,66 @@ def toggle_follow_view(request, username):
 @login_required
 def followers_list_view(request, username):
     profile_user = get_object_or_404(User, username=username)
-    followers = User.objects.filter(following_set__followed=profile_user).select_related('profile')
+
+    # Blocked check
+    is_blocked = BlockedUser.objects.filter(
+        Q(blocker=request.user, blocked=profile_user) | Q(blocker=profile_user, blocked=request.user)
+    ).exists()
+    if is_blocked and profile_user != request.user:
+        return render(request, 'accounts/blocked_profile.html', {'profile_user': profile_user})
+
+    profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+    is_own_profile = (request.user == profile_user)
+    are_friends = Friendship.are_friends(request.user, profile_user)
+
+    vis = getattr(profile, 'followers_visibility', 'public')
+    if (vis == 'private' and not is_own_profile) or (vis == 'friends' and not (is_own_profile or are_friends)):
+        followers = User.objects.none()
+        is_hidden = True
+    elif profile.is_locked and not (is_own_profile or are_friends):
+        followers = User.objects.none()
+        is_hidden = True
+    else:
+        followers = User.objects.filter(following_set__followed=profile_user, is_active=True, is_deactivated=False).select_related('profile')
+        is_hidden = False
+
     return render(request, 'accounts/follow_list.html', {
         'profile_user': profile_user,
         'user_list': followers,
         'list_type': 'Followers',
+        'is_hidden': is_hidden,
     })
 
 
 @login_required
 def following_list_view(request, username):
     profile_user = get_object_or_404(User, username=username)
-    following = User.objects.filter(followers_set__follower=profile_user).select_related('profile')
+
+    # Blocked check
+    is_blocked = BlockedUser.objects.filter(
+        Q(blocker=request.user, blocked=profile_user) | Q(blocker=profile_user, blocked=request.user)
+    ).exists()
+    if is_blocked and profile_user != request.user:
+        return render(request, 'accounts/blocked_profile.html', {'profile_user': profile_user})
+
+    profile, _ = UserProfile.objects.get_or_create(user=profile_user)
+    is_own_profile = (request.user == profile_user)
+    are_friends = Friendship.are_friends(request.user, profile_user)
+
+    vis = getattr(profile, 'followers_visibility', 'public')
+    if (vis == 'private' and not is_own_profile) or (vis == 'friends' and not (is_own_profile or are_friends)):
+        following = User.objects.none()
+        is_hidden = True
+    elif profile.is_locked and not (is_own_profile or are_friends):
+        following = User.objects.none()
+        is_hidden = True
+    else:
+        following = User.objects.filter(followers_set__follower=profile_user, is_active=True, is_deactivated=False).select_related('profile')
+        is_hidden = False
+
     return render(request, 'accounts/follow_list.html', {
         'profile_user': profile_user,
         'user_list': following,
         'list_type': 'Following',
+        'is_hidden': is_hidden,
     })

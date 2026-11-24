@@ -21,6 +21,14 @@
 
                 <form method="POST" novalidate>
                     {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger p-2 small mb-3">
+                            {% for err in form.non_field_errors %}
+                                <div><i class="bi bi-exclamation-circle me-1"></i>{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                     
                     <div class="row g-2 mb-3">
                         <div class="col-6">

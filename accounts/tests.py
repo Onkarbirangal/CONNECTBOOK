@@ -237,4 +237,67 @@ class AccountsTestCase(TestCase):
         self.assertFalse(res_locked_viewer.context['can_view_content'])
         self.assertContains(res_locked_viewer, 'This Profile is Private')
 
+    def test_locked_profile_blocks_all_private_tabs(self):
+        """Verify that locked or private profile hides sensitive content on all tabs."""
+        self.user.profile.is_locked = True
+        self.user.profile.save()
+
+        viewer = User.objects.create_user(username='intruder', email='intruder@example.com', password='Password123!')
+        self.client.login(username='intruder', password='Password123!')
+
+        for tab in ['photos', 'videos', 'about', 'checkins', 'likes']:
+            res = self.client.get(reverse('accounts:profile', kwargs={'username': 'testuser'}) + f'?tab={tab}')
+            self.assertEqual(res.status_code, 200)
+            self.assertFalse(res.context['can_view_content'])
+            self.assertContains(res, 'This Profile is Private')
+
+    def test_blocking_cleans_follow_and_prevents_re_following(self):
+        """Verify blocking deletes follow relations in both directions and prevents re-following."""
+        target = User.objects.create_user(username='blocked_target', email='bt@example.com', password='Password123!')
+        Follow.objects.create(follower=self.user, followed=target)
+        Follow.objects.create(follower=target, followed=self.user)
+
+        self.client.login(username='testuser', password='Password123!')
+        # Block target
+        self.client.post(reverse('accounts:toggle_block', kwargs={'user_id': target.id}))
+        self.assertFalse(Follow.objects.filter(follower=self.user, followed=target).exists())
+        self.assertFalse(Follow.objects.filter(follower=target, followed=self.user).exists())
+
+        # Attempt to follow blocked target
+        res = self.client.get(reverse('accounts:toggle_follow', kwargs={'username': 'blocked_target'}))
+        self.assertEqual(res.status_code, 302)
+        self.assertFalse(Follow.objects.filter(follower=self.user, followed=target).exists())
+
+    def test_single_session_termination_endpoint(self):
+        """Verify individual session termination."""
+        self.client.login(username='testuser', password='Password123!')
+        rec = UserSessionRecord.objects.create(
+            user=self.user,
+            session_key='other_session_xyz123',
+            device_type='Tablet',
+            is_active=True
+        )
+        res = self.client.post(reverse('accounts:terminate_session', kwargs={'session_id': rec.id}))
+        self.assertEqual(res.status_code, 302)
+        rec.refresh_from_db()
+        self.assertFalse(rec.is_active)
+
+    def test_privacy_sync_between_profile_and_settings(self):
+        """Verify profile visibility stays synced between privacy center and profile edit."""
+        self.client.login(username='testuser', password='Password123!')
+        # Update via privacy settings
+        self.client.post(reverse('accounts:privacy_settings'), {
+            'profile_visibility': 'friends',
+            'post_default_audience': 'friends',
+            'story_privacy': 'friends',
+            'friend_request_permission': 'everyone',
+            'message_permission': 'everyone',
+            'friends_list_visibility': 'friends',
+            'search_discoverability': True,
+            'read_receipts': True,
+            'online_status_visible': True,
+        })
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.profile_visibility, 'friends')
+
 

@@ -72,3 +72,31 @@ class StoriesTestCase(TestCase):
         archive_res = self.client.get(reverse('stories:story_archive'))
         self.assertEqual(archive_res.status_code, 200)
         self.assertIn(story, archive_res.context['stories'])
+
+    def test_private_story_access_control(self):
+        """Verify non-friends cannot react, reply, or view friends-only story."""
+        from datetime import timedelta
+        from django.utils import timezone
+        private_story = Story.objects.create(
+            author=self.user1,
+            media_type='text',
+            text_content='Secret friends only story',
+            privacy='friends',
+            expires_at=timezone.now() + timedelta(hours=24)
+        )
+
+        # viewer1 is NOT a friend of author1
+        self.client.login(username='viewer1', password='Password123!')
+
+        # 1. user_stories_api should return empty
+        api_res = self.client.get(reverse('stories:user_stories_api', kwargs={'user_id': self.user1.id}))
+        self.assertEqual(api_res.status_code, 200)
+        self.assertEqual(len(api_res.json()['stories']), 0)
+
+        # 2. react_story_api should be 403
+        r_res = self.client.post(reverse('stories:react_story_api', kwargs={'story_id': private_story.id}), {'reaction_type': 'love'})
+        self.assertEqual(r_res.status_code, 403)
+
+        # 3. reply_story_api should be 403
+        rep_res = self.client.post(reverse('stories:reply_story_api', kwargs={'story_id': private_story.id}), {'message': 'Hi'})
+        self.assertEqual(rep_res.status_code, 403)

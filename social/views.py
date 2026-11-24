@@ -1505,10 +1505,17 @@ def search_suggestions_view(request):
     from pages_app.models import Page
     from events_app.models import Event
     from marketplace.models import MarketplaceListing
+    from accounts.models import BlockedUser
 
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'results': []})
+
+    # Blocked users exclusion
+    blocked_ids = BlockedUser.objects.filter(
+        Q(blocker=request.user) | Q(blocked=request.user)
+    ).values_list('blocked_id', 'blocker_id')
+    blocked_flat = set([uid for pair in blocked_ids for uid in pair])
 
     results = []
     # Search top users
@@ -1516,7 +1523,7 @@ def search_suggestions_view(request):
         Q(username__icontains=query) |
         Q(first_name__icontains=query) |
         Q(last_name__icontains=query)
-    ).exclude(is_deactivated=True).exclude(
+    ).exclude(is_deactivated=True).exclude(id__in=blocked_flat).exclude(
         privacy_settings__search_discoverability=False
     ).select_related('profile')[:3]
 

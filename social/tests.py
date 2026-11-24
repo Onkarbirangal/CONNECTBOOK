@@ -820,6 +820,18 @@ class SocialTestCase(TestCase):
         self.assertTrue(reel_friends.can_view(self.u2)) # friend
         self.assertFalse(reel_friends.can_view(self.u3)) # not a friend
 
+    def test_search_suggestions_excludes_blocked_users(self):
+        """Verify search suggestions do not suggest blocked users."""
+        from accounts.models import BlockedUser
+        BlockedUser.objects.create(blocker=self.u1, blocked=self.u3)
+
+        self.client.login(username='alice', password='Password123!')
+        res = self.client.get(reverse('social:search_suggestions') + '?q=charlie')
+        self.assertEqual(res.status_code, 200)
+        results = res.json().get('results', [])
+        found_charlie = any(r['subtitle'] == '@charlie' for r in results)
+        self.assertFalse(found_charlie)
+
 
 
 

@@ -34,11 +34,14 @@
         <a href="{% url 'social:reels' %}" class="cb-nav-tab {% if active_nav == 'reels' %}active{% endif %}" title="Reels">
             <i class="bi bi-camera-reels-fill"></i>
         </a>
-        <a href="{% url 'marketplace:listing_list' %}" class="cb-nav-tab {% if active_nav == 'marketplace' %}active{% endif %}" title="Marketplace">
-            <i class="bi bi-shop"></i>
-        </a>
         <a href="{% url 'groups_app:list' %}" class="cb-nav-tab {% if active_nav == 'groups' %}active{% endif %}" title="Groups">
             <i class="bi bi-collection-fill"></i>
+        </a>
+        <a href="{% url 'pages_app:page_list' %}" class="cb-nav-tab {% if active_nav == 'pages' %}active{% endif %}" title="Pages">
+            <i class="bi bi-flag-fill"></i>
+        </a>
+        <a href="{% url 'marketplace:listing_list' %}" class="cb-nav-tab {% if active_nav == 'marketplace' %}active{% endif %}" title="Marketplace">
+            <i class="bi bi-shop"></i>
         </a>
         <a href="{% url 'social:saved_posts' %}" class="cb-nav-tab {% if active_nav == 'saved' %}active{% endif %}" title="Saved">
             <i class="bi bi-bookmark-fill"></i>

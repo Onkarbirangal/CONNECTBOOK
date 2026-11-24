@@ -75,3 +75,17 @@ class Friendship(models.Model):
         mutual_ids = ids1.intersection(ids2)
         from accounts.models import CustomUser
         return CustomUser.objects.filter(id__in=mutual_ids, is_active=True, is_deactivated=False)
+
+
+class DismissedSuggestion(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dismissed_suggestions')
+    dismissed_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dismissed_by_users')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'dismissed_user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} dismissed {self.dismissed_user.username}"
+

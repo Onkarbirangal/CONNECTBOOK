@@ -35,7 +35,7 @@
                             <i class="bi bi-person-check fs-5"></i>
                             <span>All Friends</span>
                         </div>
-                        <span class="badge bg-secondary rounded-pill">{{ total_friends_count }}</span>
+                        <span class="badge bg-secondary rounded-pill" id="sidebarFriendsBadge">{{ total_friends_count }}</span>
                     </a>
 
                     <a href="{% url 'friends:list' %}?tab=requests{% if search_q %}&q={{ search_q }}{% endif %}"
@@ -44,11 +44,9 @@
                             <i class="bi bi-person-plus fs-5"></i>
                             <span>Friend Requests</span>
                         </div>
-                        {% if pending_received_count > 0 %}
-                            <span class="badge bg-primary rounded-pill">{{ pending_received_count }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary rounded-pill">0</span>
-                        {% endif %}
+                        <span class="badge {% if pending_received_count > 0 %}bg-primary{% else %}bg-secondary{% endif %} rounded-pill" id="sidebarRequestsBadge">
+                            {{ pending_received_count }}
+                        </span>
                     </a>
 
                     <a href="{% url 'friends:list' %}?tab=sent{% if search_q %}&q={{ search_q }}{% endif %}"
@@ -57,7 +55,7 @@
                             <i class="bi bi-send fs-5"></i>
                             <span>Sent Requests</span>
                         </div>
-                        <span class="badge bg-secondary rounded-pill">{{ pending_sent_count }}</span>
+                        <span class="badge bg-secondary rounded-pill" id="sidebarSentBadge">{{ pending_sent_count }}</span>
                     </a>
 
                     <a href="{% url 'friends:list' %}?tab=suggestions{% if search_q %}&q={{ search_q }}{% endif %}"
@@ -66,7 +64,7 @@
                             <i class="bi bi-compass fs-5"></i>
                             <span>Suggestions</span>
                         </div>
-                        <span class="badge bg-secondary rounded-pill">{{ suggestions_count }}</span>
+                        <span class="badge bg-secondary rounded-pill" id="sidebarSuggestionsBadge">{{ suggestions_count }}</span>
                     </a>
 
                     <a href="{% url 'friends:list' %}?tab=birthdays{% if search_q %}&q={{ search_q }}{% endif %}"
@@ -75,11 +73,9 @@
                             <i class="bi bi-cake2 fs-5"></i>
                             <span>Birthdays</span>
                         </div>
-                        {% if birthdays_count > 0 %}
-                            <span class="badge bg-warning text-dark rounded-pill">{{ birthdays_count }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary rounded-pill">0</span>
-                        {% endif %}
+                        <span class="badge {% if birthdays_count > 0 %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill">
+                            {{ birthdays_count }}
+                        </span>
                     </a>
 
                     <a href="{% url 'friends:list' %}?tab=followers{% if search_q %}&q={{ search_q }}{% endif %}"
@@ -116,38 +112,80 @@
         <main class="flex-grow-1 min-w-0">
             <!-- Search & Actions Top Bar -->
             <div class="cb-card p-3 mb-4">
-                <form method="GET" action="{% url 'friends:list' %}" class="row g-2 align-items-center">
-                    <input type="hidden" name="tab" value="{{ tab }}">
-                    <div class="col-12 col-md-8">
-                        <div class="input-group">
-                            <span class="input-group-text bg-transparent border-end-0">
-                                <i class="bi bi-search text-muted"></i>
-                            </span>
-                            <input type="text"
-                                   name="q"
-                                   class="form-control border-start-0 ps-0"
-                                   placeholder="Search by name or username..."
-                                   value="{{ search_q }}">
-                            {% if search_q %}
-                                <a href="{% url 'friends:list' %}?tab={{ tab }}" class="btn btn-outline-secondary" title="Clear search">
-                                    <i class="bi bi-x-lg"></i>
-                                </a>
-                            {% endif %}
-                            <button type="submit" class="btn btn-cb-primary">Search</button>
+                {% if tab == 'suggestions' %}
+                    <form method="GET" action="{% url 'friends:list' %}" class="row g-2 align-items-center" id="suggestionsSearchForm">
+                        <input type="hidden" name="tab" value="suggestions">
+                        <input type="hidden" name="filter" value="{{ filter_type|default:'all' }}">
+                        <div class="col-12 col-md-6 col-lg-7">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="bi bi-search text-muted"></i>
+                                </span>
+                                <input type="text"
+                                       name="q"
+                                       class="form-control border-start-0 ps-0"
+                                       placeholder="Search suggestions by name or @username..."
+                                       value="{{ search_q }}">
+                                {% if search_q %}
+                                    <a href="{% url 'friends:list' %}?tab=suggestions{% if filter_type %}&filter={{ filter_type }}{% endif %}" class="btn btn-outline-secondary" title="Clear search">
+                                        <i class="bi bi-x-lg"></i>
+                                    </a>
+                                {% endif %}
+                                <button type="submit" class="btn btn-cb-primary">Search</button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-12 col-md-4 text-md-end">
-                        {% if tab != 'suggestions' %}
+                        <div class="col-12 col-md-6 col-lg-5 text-md-end">
+                            <div class="d-flex align-items-center justify-content-start justify-content-md-end gap-1 flex-wrap">
+                                <span class="small text-muted fw-semibold me-1 d-none d-sm-inline"><i class="bi bi-funnel me-1"></i>Filter:</span>
+                                <div class="btn-group btn-group-sm w-100 w-sm-auto" role="group" aria-label="Filters">
+                                    <a href="{% url 'friends:list' %}?tab=suggestions&filter=all{% if search_q %}&q={{ search_q }}{% endif %}"
+                                       class="btn {% if filter_type == 'all' or not filter_type %}btn-cb-primary active{% else %}btn-outline-secondary{% endif %}">
+                                        All
+                                    </a>
+                                    <a href="{% url 'friends:list' %}?tab=suggestions&filter=mutual{% if search_q %}&q={{ search_q }}{% endif %}"
+                                       class="btn {% if filter_type == 'mutual' %}btn-cb-primary active{% else %}btn-outline-secondary{% endif %}">
+                                        <i class="bi bi-people-fill me-1"></i>Mutual
+                                    </a>
+                                    <a href="{% url 'friends:list' %}?tab=suggestions&filter=recent{% if search_q %}&q={{ search_q }}{% endif %}"
+                                       class="btn {% if filter_type == 'recent' %}btn-cb-primary active{% else %}btn-outline-secondary{% endif %}">
+                                        <i class="bi bi-clock-history me-1"></i>Recent
+                                    </a>
+                                    <a href="{% url 'friends:list' %}?tab=suggestions&filter=groups{% if search_q %}&q={{ search_q }}{% endif %}"
+                                       class="btn {% if filter_type == 'groups' %}btn-cb-primary active{% else %}btn-outline-secondary{% endif %}">
+                                        <i class="bi bi-collection-fill me-1"></i>Groups
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                {% else %}
+                    <form method="GET" action="{% url 'friends:list' %}" class="row g-2 align-items-center">
+                        <input type="hidden" name="tab" value="{{ tab }}">
+                        <div class="col-12 col-md-8">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="bi bi-search text-muted"></i>
+                                </span>
+                                <input type="text"
+                                       name="q"
+                                       class="form-control border-start-0 ps-0"
+                                       placeholder="Search by name or username..."
+                                       value="{{ search_q }}">
+                                {% if search_q %}
+                                    <a href="{% url 'friends:list' %}?tab={{ tab }}" class="btn btn-outline-secondary" title="Clear search">
+                                        <i class="bi bi-x-lg"></i>
+                                    </a>
+                                {% endif %}
+                                <button type="submit" class="btn btn-cb-primary">Search</button>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4 text-md-end">
                             <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-secondary w-100 w-md-auto">
                                 <i class="bi bi-person-plus me-1"></i>Find Suggestions
                             </a>
-                        {% else %}
-                            <a href="{% url 'friends:list' %}?tab=all" class="btn btn-cb-secondary w-100 w-md-auto">
-                                <i class="bi bi-people me-1"></i>All Friends
-                            </a>
-                        {% endif %}
-                    </div>
-                </form>
+                        </div>
+                    </form>
+                {% endif %}
             </div>
 
             <!-- Content for Active Tab -->
@@ -378,65 +416,156 @@
 
             {% elif tab == 'suggestions' %}
                 <!-- Friend Suggestions Tab -->
-                <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3">
                     <div>
-                        <h4 class="fw-bold mb-0">
-                            People You May Know <span class="text-muted fs-6">({{ suggested_list|length }})</span>
+                        <h4 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                            <span>People You May Know</span>
+                            <span class="badge bg-primary rounded-pill fs-6" id="suggestionsTotalBadge">{{ total_suggestions_count }}</span>
                         </h4>
-                        <p class="text-muted small mb-0">Ranked by mutual friends and community connections</p>
+                        <p class="text-muted small mb-0 mt-1">Ranked by mutual friends and community connections.</p>
                     </div>
                 </div>
 
+                <!-- Suggestions Grid -->
                 {% if suggested_list %}
-                    <div class="cb-friends-grid">
+                    <div class="cb-suggestions-grid" id="suggestionsContainer">
                         {% for s in suggested_list %}
-                            <div class="cb-friend-card" id="suggested-card-{{ s.id }}">
-                                <div class="cb-friend-card-cover"></div>
-                                <a href="{% url 'accounts:profile' username=s.username %}">
-                                    <img src="{{ s.profile.get_avatar_url }}"
-                                         class="cb-friend-card-avatar"
-                                         alt="{{ s.get_display_name }}"
-                                         onerror="this.src='{% static 'images/default-avatar.svg' %}'">
-                                </a>
-                                <div class="cb-friend-card-body">
+                            <div class="cb-suggestion-card" id="suggested-card-{{ s.id }}" data-user-id="{{ s.id }}">
+                                <!-- Cover Image -->
+                                <div class="cb-suggestion-cover-wrap">
+                                    <img src="{{ s.profile.get_cover_url }}"
+                                         class="cb-suggestion-cover-img"
+                                         alt="{{ s.get_display_name }}'s cover"
+                                         loading="lazy"
+                                         onerror="this.onerror=null; this.src='{% static 'images/default-cover.svg' %}';">
+                                </div>
+
+                                <!-- Circular Profile Avatar -->
+                                <div class="cb-suggestion-avatar-wrap">
+                                    <a href="{% url 'accounts:profile' username=s.username %}">
+                                        <img src="{{ s.profile.get_avatar_url }}"
+                                             class="cb-suggestion-avatar"
+                                             alt="{{ s.get_display_name }}"
+                                             loading="lazy"
+                                             onerror="this.onerror=null; this.src='{% static 'images/default-avatar.svg' %}';">
+                                    </a>
+                                </div>
+
+                                <!-- Content -->
+                                <div class="cb-suggestion-content">
                                     <div>
                                         <a href="{% url 'accounts:profile' username=s.username %}"
-                                           class="fw-bold text-decoration-none text-reset d-block text-truncate">
+                                           class="cb-suggestion-name d-block text-truncate"
+                                           title="{{ s.get_display_name }}">
                                             {{ s.get_display_name }}
                                         </a>
-                                        <div class="text-muted small text-truncate">@{{ s.username }}</div>
-                                        <div class="text-muted small mt-1">
+                                        <div class="cb-suggestion-username text-truncate">@{{ s.username }}</div>
+
+                                        <!-- Mutual Friends Count -->
+                                        <div class="cb-suggestion-mutual text-truncate">
                                             {% if s.mutual_count > 0 %}
-                                                <i class="bi bi-people-fill text-primary me-1"></i>{{ s.mutual_count }} mutual friend{{ s.mutual_count|pluralize }}
+                                                <span class="text-primary fw-semibold">
+                                                    <i class="bi bi-people-fill me-1"></i>{{ s.mutual_count }} mutual friend{{ s.mutual_count|pluralize }}
+                                                </span>
                                             {% else %}
-                                                <i class="bi bi-globe me-1"></i>Suggested for you
+                                                <span class="text-muted">
+                                                    <i class="bi bi-globe me-1"></i>Suggested for you
+                                                </span>
                                             {% endif %}
+                                        </div>
+
+                                        <!-- Suggestion Reason Badge -->
+                                        <div>
+                                            <span class="cb-suggestion-reason text-truncate" title="{{ s.suggestion_reason }}">
+                                                <i class="bi bi-stars text-primary me-1"></i>{{ s.suggestion_reason }}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div class="d-flex gap-2 mt-3">
-                                        <form action="{% url 'friends:send_request' user_id=s.id %}" method="POST" class="m-0 flex-grow-1">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-cb-primary w-100">
-                                                <i class="bi bi-person-plus-fill me-1"></i>Add Friend
-                                            </button>
-                                        </form>
+                                    <!-- Action Buttons -->
+                                    <div class="cb-suggestion-actions">
                                         <button type="button"
-                                                class="btn btn-sm btn-cb-secondary"
-                                                title="Dismiss"
-                                                onclick="document.getElementById('suggested-card-{{ s.id }}').style.display='none';">
-                                            Remove
+                                                class="btn cb-btn-add w-100 btn-add-friend"
+                                                data-user-id="{{ s.id }}"
+                                                data-name="{{ s.get_display_name }}"
+                                                data-username="{{ s.username }}">
+                                            <i class="bi bi-person-plus-fill me-1"></i>Add Friend
+                                        </button>
+                                        <button type="button"
+                                                class="btn cb-btn-remove w-100 btn-remove-suggestion"
+                                                data-user-id="{{ s.id }}"
+                                                data-name="{{ s.get_display_name }}"
+                                                data-username="{{ s.username }}"
+                                                title="Remove this suggestion">
+                                            <i class="bi bi-x-lg me-1"></i>Remove
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
+
+                    <!-- Pagination -->
+                    {% if suggestions_page_obj.paginator.num_pages > 1 %}
+                        <nav class="mt-4 d-flex justify-content-center" aria-label="Suggestions navigation">
+                            <ul class="pagination pagination-sm">
+                                {% if suggestions_page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?tab=suggestions&page={{ suggestions_page_obj.previous_page_number }}{% if search_q %}&q={{ search_q }}{% endif %}{% if filter_type %}&filter={{ filter_type }}{% endif %}" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo; Prev</span>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">&laquo; Prev</span></li>
+                                {% endif %}
+
+                                {% for p in suggestions_page_obj.paginator.page_range %}
+                                    {% if p == suggestions_page_obj.number %}
+                                        <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
+                                    {% elif p >= suggestions_page_obj.number|add:"-2" and p <= suggestions_page_obj.number|add:"2" %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?tab=suggestions&page={{ p }}{% if search_q %}&q={{ search_q }}{% endif %}{% if filter_type %}&filter={{ filter_type }}{% endif %}">{{ p }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if suggestions_page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?tab=suggestions&page={{ suggestions_page_obj.next_page_number }}{% if search_q %}&q={{ search_q }}{% endif %}{% if filter_type %}&filter={{ filter_type }}{% endif %}" aria-label="Next">
+                                            <span aria-hidden="true">Next &raquo;</span>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+
                 {% else %}
-                    <div class="cb-card text-center p-5 text-muted">
-                        <i class="bi bi-check2-circle display-4 mb-3 text-secondary"></i>
-                        <h5>No New Suggestions Right Now</h5>
-                        <p class="small text-muted">Check back later or search for people using the search bar above.</p>
+                    <!-- Empty State -->
+                    <div class="cb-card text-center p-5 text-muted" id="emptySuggestionsContainer">
+                        <div class="mb-3">
+                            <i class="bi bi-people display-4 text-primary opacity-50"></i>
+                        </div>
+                        <h5 class="fw-bold text-reset">No suggestions available right now. Check back later!</h5>
+                        <p class="small text-muted mb-4" style="max-width: 480px; margin: 0 auto;">
+                            {% if search_q %}
+                                No people matched your search for "{{ search_q }}". Try a different name or clear the filter.
+                            {% else %}
+                                You're connected with everyone currently suggested. Check back as new members join and your network grows!
+                            {% endif %}
+                        </p>
+                        <div class="d-flex justify-content-center gap-2">
+                            {% if search_q or filter_type != 'all' %}
+                                <a href="{% url 'friends:list' %}?tab=suggestions" class="btn btn-cb-primary">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>View All Suggestions
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'social:feed' %}" class="btn btn-cb-secondary">
+                                <i class="bi bi-house-door me-1"></i>Back to Home Feed
+                            </a>
+                        </div>
                     </div>
                 {% endif %}
 
@@ -658,4 +787,207 @@
         </main>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getCsrfToken() {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input) return input.value;
+        const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+        return cookieMatch ? cookieMatch[1] : '';
+    }
+
+    function showToast(message, isSuccess = true, undoCallback = null) {
+        let container = document.getElementById('toastNotificationContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastNotificationContainer';
+            container.className = 'position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '2050';
+            container.style.marginTop = '56px';
+            document.body.appendChild(container);
+        }
+
+        const toastEl = document.createElement('div');
+        toastEl.className = `alert alert-${isSuccess ? 'primary' : 'danger'} alert-dismissible fade show shadow-sm d-flex align-items-center justify-content-between mb-2`;
+        toastEl.style.minWidth = '290px';
+        toastEl.style.maxWidth = '420px';
+        toastEl.setAttribute('role', 'alert');
+
+        const contentWrap = document.createElement('div');
+        contentWrap.className = 'd-flex align-items-center gap-2 flex-grow-1 me-2';
+        contentWrap.innerHTML = `
+            <i class="bi ${isSuccess ? 'bi-check-circle-fill text-primary' : 'bi-exclamation-circle-fill text-danger'} fs-5"></i>
+            <span class="small fw-semibold">${message}</span>
+        `;
+
+        if (undoCallback) {
+            const undoBtn = document.createElement('button');
+            undoBtn.type = 'button';
+            undoBtn.className = 'btn btn-sm btn-link text-primary text-decoration-underline p-0 fw-bold ms-auto me-2';
+            undoBtn.textContent = 'Undo';
+            undoBtn.addEventListener('click', function() {
+                undoCallback();
+                toastEl.remove();
+            });
+            contentWrap.appendChild(undoBtn);
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn-close';
+        closeBtn.setAttribute('data-bs-dismiss', 'alert');
+        closeBtn.setAttribute('aria-label', 'Close');
+
+        toastEl.appendChild(contentWrap);
+        toastEl.appendChild(closeBtn);
+        container.appendChild(toastEl);
+
+        setTimeout(() => {
+            if (toastEl && toastEl.parentNode) {
+                toastEl.classList.remove('show');
+                setTimeout(() => toastEl.remove(), 250);
+            }
+        }, 5000);
+    }
+
+    // Add Friend AJAX
+    document.querySelectorAll('.btn-add-friend').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const userId = this.getAttribute('data-user-id');
+            const name = this.getAttribute('data-name');
+            if (!userId || this.classList.contains('btn-sent')) return;
+
+            const originalHtml = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...';
+            this.disabled = true;
+
+            try {
+                const response = await fetch(`/friends/request/${userId}/send/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    this.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Request Sent';
+                    this.classList.remove('cb-btn-add');
+                    this.classList.add('btn-sent');
+                    this.disabled = true;
+
+                    // Update Sent Requests Badge
+                    const sentBadge = document.getElementById('sidebarSentBadge');
+                    if (sentBadge) {
+                        sentBadge.textContent = data.pending_sent_count !== undefined ? data.pending_sent_count : (parseInt(sentBadge.textContent || '0') + 1);
+                    }
+
+                    showToast(data.message || `Friend request sent to ${name}.`, true);
+                } else {
+                    this.innerHTML = originalHtml;
+                    this.disabled = false;
+                    showToast(data.message || 'Unable to send friend request.', false);
+                }
+            } catch (err) {
+                this.innerHTML = originalHtml;
+                this.disabled = false;
+                showToast('A network error occurred. Please try again.', false);
+            }
+        });
+    });
+
+    // Remove Suggestion AJAX with Undo
+    document.querySelectorAll('.btn-remove-suggestion').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const userId = this.getAttribute('data-user-id');
+            const name = this.getAttribute('data-name');
+            const card = document.getElementById(`suggested-card-${userId}`);
+            if (!userId || !card) return;
+
+            card.classList.add('card-removing');
+
+            try {
+                const response = await fetch(`/friends/suggestions/dismiss/${userId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    setTimeout(() => {
+                        card.style.display = 'none';
+
+                        const totalBadge = document.getElementById('suggestionsTotalBadge');
+                        const sidebarBadge = document.getElementById('sidebarSuggestionsBadge');
+                        if (totalBadge && data.remaining_count !== undefined) totalBadge.textContent = data.remaining_count;
+                        if (sidebarBadge && data.remaining_count !== undefined) sidebarBadge.textContent = data.remaining_count;
+
+                        const container = document.getElementById('suggestionsContainer');
+                        if (container) {
+                            const visibleCards = container.querySelectorAll('.cb-suggestion-card:not([style*="display: none"])');
+                            if (visibleCards.length === 0) {
+                                container.insertAdjacentHTML('afterend', `
+                                    <div class="cb-card text-center p-5 text-muted" id="emptySuggestionsContainer">
+                                        <div class="mb-3"><i class="bi bi-people display-4 text-primary opacity-50"></i></div>
+                                        <h5 class="fw-bold text-reset">No suggestions available right now. Check back later!</h5>
+                                        <p class="small text-muted mb-3">You've reviewed all current friend suggestions.</p>
+                                        <a href="/friends/?tab=suggestions" class="btn btn-cb-primary"><i class="bi bi-arrow-counterclockwise me-1"></i>Refresh Suggestions</a>
+                                    </div>
+                                `);
+                            }
+                        }
+                    }, 250);
+
+                    // Show Toast with Undo action
+                    showToast(`Removed ${name} from suggestions.`, true, async () => {
+                        try {
+                            const undoRes = await fetch(`/friends/suggestions/undo-dismiss/${userId}/`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': getCsrfToken(),
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            const undoData = await undoRes.json();
+                            if (undoData.success) {
+                                card.style.display = 'flex';
+                                card.classList.remove('card-removing');
+                                const emptyEl = document.getElementById('emptySuggestionsContainer');
+                                if (emptyEl) emptyEl.remove();
+
+                                const totalBadge = document.getElementById('suggestionsTotalBadge');
+                                const sidebarBadge = document.getElementById('sidebarSuggestionsBadge');
+                                if (totalBadge && undoData.remaining_count !== undefined) totalBadge.textContent = undoData.remaining_count;
+                                if (sidebarBadge && undoData.remaining_count !== undefined) sidebarBadge.textContent = undoData.remaining_count;
+
+                                showToast(`Restored ${name} to suggestions.`, true);
+                            }
+                        } catch (uErr) {
+                            showToast('Failed to restore suggestion.', false);
+                        }
+                    });
+                } else {
+                    card.classList.remove('card-removing');
+                    showToast(data.message || 'Unable to remove suggestion.', false);
+                }
+            } catch (err) {
+                card.classList.remove('card-removing');
+                showToast('A network error occurred. Please try again.', false);
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

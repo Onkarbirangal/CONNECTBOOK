@@ -5,10 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden
 from django.utils import timezone
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.contrib.auth import get_user_model
 from .models import Conversation, ConversationParticipant, Message, MessageReaction, CallSession
 from friends.models import Friendship
+from accounts.models import BlockedUser
 from notifications.services import send_notification
 
 User = get_user_model()
@@ -100,6 +101,14 @@ def direct_chat_view(request, user_id):
         messages.error(request, "You cannot start a conversation with yourself.")
         return redirect('chat:inbox')
 
+    # Blocked check
+    is_blocked = BlockedUser.objects.filter(
+        Q(blocker=request.user, blocked=target_user) | Q(blocker=target_user, blocked=request.user)
+    ).exists()
+    if is_blocked:
+        messages.error(request, "Cannot start a chat with this user.")
+        return redirect('chat:inbox')
+
     # Look for existing direct conversation
     existing_conv = Conversation.objects.filter(
         is_group=False,
@@ -123,6 +132,15 @@ def send_message_http(request, conversation_id):
         return HttpResponseForbidden()
 
     if request.method == 'POST':
+        # Check if 1-on-1 recipient is blocked
+        if not conv.is_group:
+            recipient = conv.get_recipient(request.user)
+            if recipient:
+                is_blocked = BlockedUser.objects.filter(
+                    Q(blocker=request.user, blocked=recipient) | Q(blocker=recipient, blocked=request.user)
+                ).exists()
+                if is_blocked:
+                    return JsonResponse({'status': 'error', 'message': 'Cannot send message to this user.'}, status=403)
         data = {}
         try:
             data = json.loads(request.body)
@@ -278,6 +296,14 @@ def start_call_view(request, user_id, call_type='video'):
     target_user = get_object_or_404(User, id=user_id)
     if target_user == request.user:
         messages.error(request, "You cannot call yourself.")
+        return redirect('chat:inbox')
+
+    # Blocked check
+    is_blocked = BlockedUser.objects.filter(
+        Q(blocker=request.user, blocked=target_user) | Q(blocker=target_user, blocked=request.user)
+    ).exists()
+    if is_blocked:
+        messages.error(request, "Cannot call a blocked user.")
         return redirect('chat:inbox')
 
     if call_type not in ['video', 'audio']:

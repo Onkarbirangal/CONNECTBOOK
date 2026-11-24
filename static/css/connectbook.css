@@ -1935,3 +1935,191 @@ a:hover {
     flex-shrink: 0;
   }
 }
+
+/* ========================================================
+   PEOPLE YOU MAY KNOW / FRIEND SUGGESTIONS UPGRADED UI
+   ======================================================== */
+.cb-suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 991.98px) {
+  .cb-suggestions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+@media (max-width: 575.98px) {
+  .cb-suggestions-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.cb-suggestion-card {
+  background: var(--cb-card);
+  border: 1px solid var(--cb-border);
+  border-radius: var(--cb-radius);
+  overflow: hidden;
+  box-shadow: var(--cb-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  position: relative;
+}
+.cb-suggestion-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--cb-shadow-md);
+  border-color: rgba(24, 119, 242, 0.3);
+}
+
+.cb-suggestion-cover-wrap {
+  height: 96px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--cb-primary), #00C6FF);
+}
+.cb-suggestion-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.cb-suggestion-card:hover .cb-suggestion-cover-img {
+  transform: scale(1.04);
+}
+
+.cb-suggestion-avatar-wrap {
+  padding-left: 16px;
+  margin-top: -38px;
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+}
+.cb-suggestion-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid var(--cb-card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  object-fit: cover;
+  background: var(--cb-card);
+  transition: transform 0.2s ease;
+}
+.cb-suggestion-card:hover .cb-suggestion-avatar {
+  transform: scale(1.05);
+}
+
+.cb-suggestion-content {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  justify-content: space-between;
+}
+.cb-suggestion-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cb-text);
+  text-decoration: none;
+  line-height: 1.25;
+  transition: color 0.15s ease;
+}
+.cb-suggestion-name:hover {
+  color: var(--cb-primary);
+}
+.cb-suggestion-username {
+  color: var(--cb-muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+.cb-suggestion-mutual {
+  font-size: 0.85rem;
+  margin-top: 6px;
+  color: var(--cb-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.cb-suggestion-reason {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--cb-input-bg);
+  color: var(--cb-muted);
+  border: 1px solid var(--cb-border);
+  max-width: 100%;
+}
+.cb-suggestion-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.cb-suggestion-actions .btn {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  transition: all 0.15s ease;
+}
+.cb-btn-add {
+  background-color: var(--cb-primary);
+  border-color: var(--cb-primary);
+  color: #fff;
+}
+.cb-btn-add:hover, .cb-btn-add:focus {
+  background-color: var(--cb-primary-hover);
+  border-color: var(--cb-primary-hover);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.cb-btn-add.btn-sent {
+  background-color: #65676B !important;
+  border-color: #65676B !important;
+  color: #fff !important;
+  cursor: default;
+  transform: none !important;
+}
+.cb-btn-remove {
+  background-color: var(--cb-input-bg);
+  border-color: var(--cb-border);
+  color: var(--cb-text);
+}
+.cb-btn-remove:hover {
+  background-color: var(--cb-border);
+  color: var(--cb-text);
+  transform: translateY(-1px);
+}
+
+.cb-suggestion-card.card-removing {
+  opacity: 0;
+  transform: scale(0.92);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+[data-theme="dark"] .cb-btn-remove {
+  background-color: #3A3B3C;
+  border-color: #3A3B3C;
+  color: #E4E6EB;
+}
+[data-theme="dark"] .cb-btn-remove:hover {
+  background-color: #4E4F50;
+  border-color: #4E4F50;
+  color: #E4E6EB;
+}
+[data-theme="dark"] .cb-suggestion-reason {
+  background-color: #3A3B3C;
+  border-color: #4E4F50;
+  color: #B0B3B8;
+}
+

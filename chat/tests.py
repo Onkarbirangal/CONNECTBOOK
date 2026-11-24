@@ -178,3 +178,25 @@ class ChatTestCase(TestCase):
         self.assertContains(res_conv, 'cb-messenger-composer')
         self.assertContains(res_conv, 'viewport')
 
+    def test_blocked_user_cannot_chat_or_call(self):
+        """Verify blocked users cannot direct chat or call each other."""
+        from accounts.models import BlockedUser
+        BlockedUser.objects.create(blocker=self.bob, blocked=self.alice)
+
+        self.client.login(username='alice', password='Password123!')
+        # Direct chat redirect check
+        res_direct = self.client.get(reverse('chat:direct', kwargs={'user_id': self.bob.id}))
+        self.assertEqual(res_direct.status_code, 302)
+
+        # Call check
+        res_call = self.client.get(reverse('chat:start_call', kwargs={'user_id': self.bob.id, 'call_type': 'video'}))
+        self.assertEqual(res_call.status_code, 302)
+
+        # Send HTTP message check
+        res_msg = self.client.post(
+            reverse('chat:send_http', kwargs={'conversation_id': self.conv.id}),
+            data='{"message": "Blocked attempt"}',
+            content_type='application/json'
+        )
+        self.assertEqual(res_msg.status_code, 403)
+

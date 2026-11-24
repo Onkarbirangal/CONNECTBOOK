@@ -86,13 +86,16 @@ WSGI_APPLICATION = 'connectbook.wsgi.application'
 ASGI_APPLICATION = 'connectbook.asgi.application'
 
 # Database: SQLite ONLY as per strict project specification
+# Database: Local SQLite
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,
+        },
     }
 }
-
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.CustomUser'
 

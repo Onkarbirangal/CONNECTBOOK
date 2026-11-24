@@ -135,6 +135,8 @@ def create_highlight_view(request):
 def react_story_api(request, story_id):
     from .models import StoryReaction
     story = get_object_or_404(Story, id=story_id)
+    if not story.can_view(request.user):
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
     r_type = request.POST.get('reaction_type', 'love')
     reaction, created = StoryReaction.objects.get_or_create(
         story=story,
@@ -153,6 +155,8 @@ def reply_story_api(request, story_id):
     from .models import StoryReply
     from chat.models import Conversation, Message
     story = get_object_or_404(Story, id=story_id)
+    if not story.can_view(request.user):
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
     message_text = request.POST.get('message', '').strip()
 
     if not message_text:
@@ -183,6 +187,8 @@ def story_archive_view(request):
 @login_required
 def view_story_api(request, story_id):
     story = get_object_or_404(Story, id=story_id)
+    if not story.can_view(request.user):
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
     if story.author != request.user:
         StoryView.objects.get_or_create(story=story, viewer=request.user)
     return JsonResponse({'status': 'viewed'})

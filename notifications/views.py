@@ -40,4 +40,6 @@ def unread_count_api(request):
 def delete_notification(request, notif_id):
     notif = get_object_or_404(Notification, id=notif_id, recipient=request.user)
     notif.delete()
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'deleted'})
     return redirect('notifications:list')
