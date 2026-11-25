@@ -178,9 +178,9 @@ TEMPLATES = [
 # Render: SQLite Persistent Disk
 # ==========================================================
 
-if os.getenv("RENDER") == "true":
+if os.getenv("RENDER") == "true" and Path("/var/data").exists():
 
-    DATABASE_NAME = "/var/data/db.sqlite3"
+    DATABASE_NAME = Path("/var/data/db.sqlite3")
 
 else:
 
@@ -323,7 +323,7 @@ STORAGES = {
 
 MEDIA_URL = "/media/"
 
-if os.getenv("RENDER") == "true":
+if os.getenv("RENDER") == "true" and Path("/var/data").exists():
 
     MEDIA_ROOT = Path("/var/data/media")
 
