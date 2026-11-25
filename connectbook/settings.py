@@ -160,6 +160,10 @@ REST_FRAMEWORK = {
 DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
 FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800
 
+# Email configuration (Console backend for local development)
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = 'ConnectBook <noreply@connectbook.local>'
+
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()

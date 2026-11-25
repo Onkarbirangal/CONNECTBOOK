@@ -53,8 +53,13 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label fw-bold">Cover Photo</label>
-                    <div>
-                        {{ profile_form.cover_photo }}
+                    <div class="d-flex flex-column gap-2">
+                        {% if profile.cover_photo %}
+                            <img src="{{ profile.get_cover_url }}" class="rounded shadow-sm" style="height: 60px; width: 100%; object-fit: cover;" alt="Current Cover">
+                        {% endif %}
+                        <div>
+                            {{ profile_form.cover_photo }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -135,4 +140,32 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function validateFileSize(input, label) {
+        if (input && input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > 5 * 1024 * 1024) {
+                alert(label + ' file size must be under 5MB.');
+                input.value = '';
+            }
+        }
+    }
+
+    const avatarInput = document.querySelector('input[name="avatar"]');
+    const coverInput = document.querySelector('input[name="cover_photo"]');
+
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            validateFileSize(avatarInput, 'Profile Picture');
+        });
+    }
+    if (coverInput) {
+        coverInput.addEventListener('change', function() {
+            validateFileSize(coverInput, 'Cover Photo');
+        });
+    }
+});
+</script>
 {% endblock %}

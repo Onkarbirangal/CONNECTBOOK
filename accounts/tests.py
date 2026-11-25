@@ -2,6 +2,10 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core import mail
+from django.utils import timezone
+from datetime import timedelta
+import re
 from accounts.models import (
     UserProfile, BlockedUser, RestrictedUser, MutedUser, UserPreference, Follow,
     UserPrivacySetting, UserSessionRecord, AccountDeletionRequest
@@ -444,6 +448,154 @@ class AccountsTestCase(TestCase):
         self.assertEqual(res_valid.status_code, 302)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('NewValidPassword456!'))
+
+    def test_password_reset_complete_flow(self):
+        """Test complete password reset email generation, token parsing, and new password setup."""
+        # 1. Request password reset
+        res = self.client.post(reverse('accounts:forgot_password'), {
+            'email': 'test@example.com'
+        })
+        self.assertEqual(res.status_code, 302)
+        self.assertRedirects(res, reverse('accounts:password_reset_done'))
+
+        # 2. Check outbox for reset email
+        self.assertEqual(len(mail.outbox), 1)
+        email_body = mail.outbox[0].body
+        self.assertIn("Reset your ConnectBook password", mail.outbox[0].subject)
+
+        # 3. Extract reset link and tokens
+        match = re.search(r'/accounts/password-reset/confirm/([^/]+)/([^/]+)/', email_body)
+        self.assertIsNotNone(match, "Password reset link not found in email body.")
+        uidb64, token = match.group(1), match.group(2)
+
+        # 4. Visit confirm page
+        confirm_url = reverse('accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
+        res_confirm = self.client.get(confirm_url)
+        self.assertEqual(res_confirm.status_code, 200)
+        self.assertTrue(res_confirm.context['validlink'])
+
+        # 5. Submit valid new password
+        res_submit = self.client.post(confirm_url, {
+            'new_password1': 'BrandNewPassword789!',
+            'new_password2': 'BrandNewPassword789!',
+        })
+        self.assertEqual(res_submit.status_code, 302)
+        self.assertRedirects(res_submit, reverse('accounts:password_reset_complete'))
+
+        # 6. Verify authentication with new credentials
+        login_old = self.client.login(username='testuser', password='Password123!')
+        self.assertFalse(login_old)
+
+        login_new = self.client.login(username='testuser', password='BrandNewPassword789!')
+        self.assertTrue(login_new)
+
+    def test_password_reset_invalid_token(self):
+        """Test that invalid or expired token shows the invalid link message."""
+        confirm_url = reverse('accounts:password_reset_confirm', kwargs={'uidb64': 'NA', 'token': 'invalid-token-123'})
+        res = self.client.get(confirm_url)
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.context['validlink'])
+
+    def test_registration_reserved_username_and_future_dob(self):
+        """Test registration rejects reserved system usernames and future dates of birth."""
+        # 1. Reserved username
+        res_reserved = self.client.post(reverse('accounts:register'), {
+            'first_name': 'Admin',
+            'last_name': 'Boss',
+            'username': 'admin',
+            'email': 'admin2@example.com',
+            'password1': 'Password123!',
+            'password2': 'Password123!',
+        })
+        self.assertEqual(res_reserved.status_code, 200)
+        self.assertFormError(res_reserved.context['form'], 'username', 'This username is reserved. Please choose another username.')
+
+        # 2. Future date of birth
+        future_date = (timezone.now() + timedelta(days=365)).date()
+        res_future_dob = self.client.post(reverse('accounts:register'), {
+            'first_name': 'Future',
+            'last_name': 'Baby',
+            'username': 'futurebaby',
+            'email': 'future@example.com',
+            'date_of_birth': future_date.strftime('%Y-%m-%d'),
+            'password1': 'Password123!',
+            'password2': 'Password123!',
+        })
+        self.assertEqual(res_future_dob.status_code, 200)
+        self.assertFormError(res_future_dob.context['form'], 'date_of_birth', 'Date of birth cannot be in the future.')
+
+    def test_toggle_block_redirect_and_ajax(self):
+        """Test block/unblock supports next redirect parameter and AJAX JSON responses."""
+        target = User.objects.create_user(username='blocktarget', email='target@example.com', password='Password123!')
+        self.client.login(username='testuser', password='Password123!')
+
+        # 1. Block with next redirect parameter
+        res_block = self.client.post(
+            reverse('accounts:toggle_block', kwargs={'user_id': target.id}),
+            {'next': reverse('accounts:privacy_settings')}
+        )
+        self.assertEqual(res_block.status_code, 302)
+        self.assertRedirects(res_block, reverse('accounts:privacy_settings'))
+        self.assertTrue(BlockedUser.objects.filter(blocker=self.user, blocked=target).exists())
+
+        # 2. Unblock with AJAX JSON request
+        res_unblock_ajax = self.client.post(
+            reverse('accounts:toggle_block', kwargs={'user_id': target.id}),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(res_unblock_ajax.status_code, 200)
+        data = res_unblock_ajax.json()
+        self.assertEqual(data.get('status'), 'ok')
+        self.assertFalse(data.get('is_blocked'))
+        self.assertFalse(BlockedUser.objects.filter(blocker=self.user, blocked=target).exists())
+
+    def test_profile_photo_mime_type_validation(self):
+        """Test that update_avatar rejects non-image files and supports AJAX."""
+        self.client.login(username='testuser', password='Password123!')
+
+        # 1. Non-image file upload
+        fake_file = SimpleUploadedFile("script.txt", b"print('hello')", content_type="text/plain")
+        res_bad = self.client.post(reverse('accounts:update_avatar'), {'avatar': fake_file})
+        self.assertEqual(res_bad.status_code, 302)
+
+        # 2. Valid image upload via AJAX
+        tiny_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff'
+            b'\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00\x00\x2c\x00\x00\x00\x00'
+            b'\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
+        )
+        valid_img = SimpleUploadedFile("avatar.gif", tiny_gif, content_type="image/gif")
+        res_ajax = self.client.post(
+            reverse('accounts:update_avatar'),
+            {'avatar': valid_img},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        self.assertEqual(res_ajax.status_code, 200)
+        self.assertEqual(res_ajax.json().get('status'), 'ok')
+
+    def test_user_authorization_guards(self):
+        """Test authorization: anonymous users are redirected, and profile edits are user-scoped."""
+        # Anonymous users cannot view edit profile
+        res_anon = self.client.get(reverse('accounts:edit_profile'))
+        self.assertEqual(res_anon.status_code, 302)
+
+        # Authenticated user editing profile only edits their own
+        other = User.objects.create_user(username='otherguy', email='otherguy@example.com', password='Password123!')
+        self.client.login(username='testuser', password='Password123!')
+
+        # Posting updates cannot affect other's account
+        self.client.post(reverse('accounts:edit_profile'), {
+            'first_name': 'MyOwnName',
+            'last_name': 'MyOwnLastName',
+            'email': 'myown@example.com',
+            'bio': 'My own bio',
+            'gender': 'unspecified',
+            'profile_visibility': 'public',
+        })
+        other.refresh_from_db()
+        self.assertNotEqual(other.first_name, 'MyOwnName')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'MyOwnName')
 
 
 

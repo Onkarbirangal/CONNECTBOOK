@@ -1,9 +1,19 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
+from django.contrib.auth.forms import (
+    UserCreationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
+)
+from django.utils import timezone
 from .models import UserProfile, UserPreference, UserPrivacySetting
 
 User = get_user_model()
+
+RESERVED_USERNAMES = {
+    'admin', 'administrator', 'accounts', 'friends', 'chat', 'stories', 'notifications',
+    'settings', 'login', 'logout', 'register', 'api', 'static', 'media',
+    'dashboard', 'connectbook', 'groups', 'pages', 'events', 'marketplace',
+    'live', 'feed', 'search', 'password-reset', 'forgot-password'
+}
 
 
 class RegisterForm(UserCreationForm):
@@ -18,17 +28,44 @@ class RegisterForm(UserCreationForm):
         model = User
         fields = ('first_name', 'last_name', 'username', 'email', 'date_of_birth', 'gender')
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'password1' in self.fields:
+            self.fields['password1'].widget.attrs.update({
+                'class': 'form-control',
+                'placeholder': 'New password',
+                'autocomplete': 'new-password'
+            })
+        if 'password2' in self.fields:
+            self.fields['password2'].widget.attrs.update({
+                'class': 'form-control',
+                'placeholder': 'Confirm password',
+                'autocomplete': 'new-password'
+            })
+
     def clean_email(self):
-        email = self.cleaned_data.get('email')
+        email = self.cleaned_data.get('email', '').strip()
         if email and User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
         return email
 
     def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if username and User.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError("A user with this username already exists.")
+        username = self.cleaned_data.get('username', '').strip()
+        if username:
+            if username.lower() in RESERVED_USERNAMES:
+                raise forms.ValidationError("This username is reserved. Please choose another username.")
+            if User.objects.filter(username__iexact=username).exists():
+                raise forms.ValidationError("A user with this username already exists.")
         return username
+
+    def clean_date_of_birth(self):
+        dob = self.cleaned_data.get('date_of_birth')
+        if dob:
+            if dob > timezone.now().date():
+                raise forms.ValidationError("Date of birth cannot be in the future.")
+            if dob.year < 1900:
+                raise forms.ValidationError("Please enter a valid date of birth (after 1900).")
+        return dob
 
 
 class LoginForm(forms.Form):
@@ -94,6 +131,15 @@ class UserBasicInfoForm(forms.ModelForm):
                 raise forms.ValidationError("An account with this email already exists.")
         return email
 
+    def clean_date_of_birth(self):
+        dob = self.cleaned_data.get('date_of_birth')
+        if dob:
+            if dob > timezone.now().date():
+                raise forms.ValidationError("Date of birth cannot be in the future.")
+            if dob.year < 1900:
+                raise forms.ValidationError("Please enter a valid date of birth (after 1900).")
+        return dob
+
 
 class ConnectBookPasswordChangeForm(PasswordChangeForm):
     """Custom PasswordChangeForm providing uniform Bootstrap form-control styling."""
@@ -101,6 +147,29 @@ class ConnectBookPasswordChangeForm(PasswordChangeForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
+
+
+class ConnectBookPasswordResetForm(PasswordResetForm):
+    """Custom PasswordResetForm providing uniform Bootstrap form-control styling."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].widget.attrs.update({
+            'class': 'form-control form-control-lg',
+            'placeholder': 'Enter your registered email address',
+            'autocomplete': 'email'
+        })
+        self.reset_url_name = 'accounts:password_reset_confirm'
+
+
+class ConnectBookSetPasswordForm(SetPasswordForm):
+    """Custom SetPasswordForm providing uniform Bootstrap form-control styling."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({
+                'class': 'form-control',
+                'autocomplete': 'new-password'
+            })
 
 
 

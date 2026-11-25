@@ -1,6 +1,7 @@
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
@@ -9,8 +10,13 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.sessions.models import Session
 from django.db.models import Q
+from django.urls import reverse_lazy
 from django.contrib.auth import get_user_model
-from .forms import RegisterForm, LoginForm, UserProfileForm, UserBasicInfoForm, UserPrivacySettingForm, ConnectBookPasswordChangeForm
+from .forms import (
+    RegisterForm, LoginForm, UserProfileForm, UserBasicInfoForm,
+    UserPrivacySettingForm, ConnectBookPasswordChangeForm,
+    ConnectBookPasswordResetForm, ConnectBookSetPasswordForm
+)
 from .models import (
     UserProfile, BlockedUser, RestrictedUser, MutedUser, UserPreference, Follow,
     UserPrivacySetting, UserSessionRecord, DataExportRequest, AccountDeletionRequest
@@ -91,7 +97,7 @@ def login_view(request):
                             }
                         )
 
-                    next_url = request.GET.get('next')
+                    next_url = request.POST.get('next') or request.GET.get('next')
                     if next_url and not url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
                         next_url = None
                     return redirect(next_url if next_url else 'social:feed')
@@ -301,34 +307,60 @@ def profile_view(request, username):
 
 @login_required
 def update_avatar_view(request):
+    is_ajax = (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json')
     if request.method == 'POST':
         avatar_file = request.FILES.get('avatar')
         if not avatar_file:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Please select an image file to upload as your avatar.'}, status=400)
             messages.error(request, "Please select an image file to upload as your avatar.")
             return redirect('accounts:profile', username=request.user.username)
         if hasattr(avatar_file, 'size') and avatar_file.size > 5 * 1024 * 1024:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Avatar image size must be under 5MB.'}, status=400)
             messages.error(request, "Avatar image size must be under 5MB.")
             return redirect('accounts:profile', username=request.user.username)
+        if hasattr(avatar_file, 'content_type') and not avatar_file.content_type.startswith('image/'):
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Uploaded file must be a valid image format.'}, status=400)
+            messages.error(request, "Uploaded file must be a valid image format.")
+            return redirect('accounts:profile', username=request.user.username)
+
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         profile.avatar = avatar_file
         profile.save()
+        if is_ajax:
+            return JsonResponse({'status': 'ok', 'avatar_url': profile.get_avatar_url(), 'message': 'Profile picture updated successfully!'})
         messages.success(request, "Profile picture updated successfully!")
     return redirect('accounts:profile', username=request.user.username)
 
 
 @login_required
 def update_cover_view(request):
+    is_ajax = (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json')
     if request.method == 'POST':
         cover_file = request.FILES.get('cover_photo')
         if not cover_file:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Please select an image file to upload as your cover photo.'}, status=400)
             messages.error(request, "Please select an image file to upload as your cover photo.")
             return redirect('accounts:profile', username=request.user.username)
         if hasattr(cover_file, 'size') and cover_file.size > 5 * 1024 * 1024:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Cover photo size must be under 5MB.'}, status=400)
             messages.error(request, "Cover photo size must be under 5MB.")
             return redirect('accounts:profile', username=request.user.username)
+        if hasattr(cover_file, 'content_type') and not cover_file.content_type.startswith('image/'):
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Uploaded file must be a valid image format.'}, status=400)
+            messages.error(request, "Uploaded file must be a valid image format.")
+            return redirect('accounts:profile', username=request.user.username)
+
         profile, _ = UserProfile.objects.get_or_create(user=request.user)
         profile.cover_photo = cover_file
         profile.save()
+        if is_ajax:
+            return JsonResponse({'status': 'ok', 'cover_url': profile.get_cover_url(), 'message': 'Cover photo updated successfully!'})
         messages.success(request, "Cover photo updated successfully!")
     return redirect('accounts:profile', username=request.user.username)
 
@@ -371,6 +403,7 @@ def edit_profile_view(request):
     return render(request, 'accounts/edit_profile.html', {
         'user_form': user_form,
         'profile_form': profile_form,
+        'profile': profile,
     })
 
 
@@ -413,16 +446,23 @@ def deactivate_account_view(request):
 @login_required
 def toggle_block_user_view(request, user_id):
     target_user = get_object_or_404(User, id=user_id)
+    is_ajax = (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json')
+
     if target_user == request.user:
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': 'You cannot block yourself.'}, status=400)
         messages.error(request, "You cannot block yourself.")
         return redirect('social:feed')
 
     blocked_rel = BlockedUser.objects.filter(blocker=request.user, blocked=target_user).first()
     if blocked_rel:
         blocked_rel.delete()
-        messages.success(request, f"You have unblocked {target_user.get_display_name()}.")
+        is_blocked = False
+        msg = f"You have unblocked {target_user.get_display_name()}."
+        messages.success(request, msg)
     else:
         BlockedUser.objects.create(blocker=request.user, blocked=target_user)
+        is_blocked = True
         # Also remove friendships or pending requests if any
         Friendship.objects.filter(
             Q(user1=request.user, user2=target_user) | Q(user1=target_user, user2=request.user)
@@ -434,7 +474,15 @@ def toggle_block_user_view(request, user_id):
         Follow.objects.filter(
             Q(follower=request.user, followed=target_user) | Q(follower=target_user, followed=request.user)
         ).delete()
-        messages.info(request, f"You have blocked {target_user.get_display_name()}.")
+        msg = f"You have blocked {target_user.get_display_name()}."
+        messages.info(request, msg)
+
+    if is_ajax:
+        return JsonResponse({'status': 'ok', 'is_blocked': is_blocked, 'message': msg})
+
+    next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
 
     return redirect('accounts:settings')
 
@@ -455,16 +503,30 @@ def api_toggle_theme(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 
 
-def forgot_password_view(request):
-    if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
-        user = User.objects.filter(email__iexact=email).first()
-        if user:
-            messages.success(request, f"Password reset instructions have been simulated for {email}. (Use settings to change password in local dev).")
-        else:
-            messages.error(request, "No account found with this email.")
-        return render(request, 'accounts/forgot_password_done.html', {'email': email})
-    return render(request, 'accounts/forgot_password.html')
+class ConnectBookPasswordResetView(auth_views.PasswordResetView):
+    template_name = 'accounts/forgot_password.html'
+    email_template_name = 'accounts/password_reset_email.html'
+    subject_template_name = 'accounts/password_reset_subject.txt'
+    success_url = reverse_lazy('accounts:password_reset_done')
+    form_class = ConnectBookPasswordResetForm
+
+
+class ConnectBookPasswordResetDoneView(auth_views.PasswordResetDoneView):
+    template_name = 'accounts/forgot_password_done.html'
+
+
+class ConnectBookPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    template_name = 'accounts/password_reset_confirm.html'
+    success_url = reverse_lazy('accounts:password_reset_complete')
+    form_class = ConnectBookSetPasswordForm
+
+
+class ConnectBookPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
+    template_name = 'accounts/password_reset_complete.html'
+
+
+# Maintain function alias for backwards compatibility
+forgot_password_view = ConnectBookPasswordResetView.as_view()
 
 
 @login_required
@@ -503,34 +565,66 @@ def privacy_settings_view(request):
 @login_required
 def toggle_restrict_user_view(request, user_id):
     target = get_object_or_404(User, id=user_id)
+    is_ajax = (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json')
+
     if target == request.user:
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': 'You cannot restrict yourself.'}, status=400)
         messages.error(request, "You cannot restrict yourself.")
         return redirect('accounts:privacy_settings')
 
     rel = RestrictedUser.objects.filter(user=request.user, restricted_user=target).first()
     if rel:
         rel.delete()
-        messages.success(request, f"Unrestricted {target.get_display_name()}.")
+        is_restricted = False
+        msg = f"Unrestricted {target.get_display_name()}."
+        messages.success(request, msg)
     else:
         RestrictedUser.objects.create(user=request.user, restricted_user=target)
-        messages.info(request, f"Restricted {target.get_display_name()}. Their interactions with your content will be limited.")
+        is_restricted = True
+        msg = f"Restricted {target.get_display_name()}. Their interactions with your content will be limited."
+        messages.info(request, msg)
+
+    if is_ajax:
+        return JsonResponse({'status': 'ok', 'is_restricted': is_restricted, 'message': msg})
+
+    next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+
     return redirect('accounts:privacy_settings')
 
 
 @login_required
 def toggle_mute_user_view(request, user_id):
     target = get_object_or_404(User, id=user_id)
+    is_ajax = (request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json')
+
     if target == request.user:
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': 'You cannot mute yourself.'}, status=400)
         messages.error(request, "You cannot mute yourself.")
         return redirect('accounts:privacy_settings')
 
     rel = MutedUser.objects.filter(user=request.user, muted_user=target).first()
     if rel:
         rel.delete()
-        messages.success(request, f"Unmuted {target.get_display_name()}.")
+        is_muted = False
+        msg = f"Unmuted {target.get_display_name()}."
+        messages.success(request, msg)
     else:
         MutedUser.objects.create(user=request.user, muted_user=target)
-        messages.info(request, f"Muted {target.get_display_name()}. You will not receive notifications from them.")
+        is_muted = True
+        msg = f"Muted {target.get_display_name()}. You will not receive notifications from them."
+        messages.info(request, msg)
+
+    if is_ajax:
+        return JsonResponse({'status': 'ok', 'is_muted': is_muted, 'message': msg})
+
+    next_url = request.POST.get('next') or request.GET.get('next') or request.META.get('HTTP_REFERER')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+
     return redirect('accounts:privacy_settings')
 
 

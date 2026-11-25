@@ -136,6 +136,7 @@
                         </div>
                         <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'accounts:privacy_settings' %}">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Unblock</button>
                         </form>
                     </div>
@@ -166,6 +167,7 @@
                         </div>
                         <form action="{% url 'accounts:toggle_restrict' user_id=r.restricted_user.id %}" method="POST" class="m-0">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'accounts:privacy_settings' %}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary">Unrestrict</button>
                         </form>
                     </div>
@@ -196,6 +198,7 @@
                         </div>
                         <form action="{% url 'accounts:toggle_mute' user_id=m.muted_user.id %}" method="POST" class="m-0">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'accounts:privacy_settings' %}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary">Unmute</button>
                         </form>
                     </div>

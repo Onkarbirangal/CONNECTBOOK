@@ -79,6 +79,7 @@
                         </div>
                         <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'accounts:settings' %}">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Unblock</button>
                         </form>
                     </div>

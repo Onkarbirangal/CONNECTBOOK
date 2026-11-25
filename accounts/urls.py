@@ -26,5 +26,8 @@ urlpatterns = [
     path('session/<int:session_id>/terminate/', views.terminate_session_view, name='terminate_session'),
     path('cancel-deletion/', views.cancel_deletion_view, name='cancel_deletion'),
     path('api/toggle-theme/', views.api_toggle_theme, name='api_toggle_theme'),
-    path('forgot-password/', views.forgot_password_view, name='forgot_password'),
+    path('forgot-password/', views.ConnectBookPasswordResetView.as_view(), name='forgot_password'),
+    path('password-reset/done/', views.ConnectBookPasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('password-reset/confirm/<uidb64>/<token>/', views.ConnectBookPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('password-reset/complete/', views.ConnectBookPasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]

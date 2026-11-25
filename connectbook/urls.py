@@ -18,6 +18,8 @@ urlpatterns = [
     path('settings/privacy/', accounts_views.privacy_settings_view, name='privacy_settings_root'),
     path('settings/security/', accounts_views.security_settings_view, name='security_settings_root'),
     path('settings/your-information/', accounts_views.your_information_view, name='your_information_root'),
+    path('accounts/reset/<uidb64>/<token>/', accounts_views.ConnectBookPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('accounts/password-reset/confirm/<uidb64>/<token>/', accounts_views.ConnectBookPasswordResetConfirmView.as_view()),
     path('friends/', include('friends.urls')),
     path('stories/', include('stories.urls')),
     path('chat/', include('chat.urls')),
