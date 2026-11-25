@@ -468,14 +468,15 @@ class AccountsTestCase(TestCase):
         self.assertIsNotNone(match, "Password reset link not found in email body.")
         uidb64, token = match.group(1), match.group(2)
 
-        # 4. Visit confirm page
+        # 4. Visit confirm page (follow=True follows security redirect to set-password)
         confirm_url = reverse('accounts:password_reset_confirm', kwargs={'uidb64': uidb64, 'token': token})
-        res_confirm = self.client.get(confirm_url)
+        res_confirm = self.client.get(confirm_url, follow=True)
         self.assertEqual(res_confirm.status_code, 200)
         self.assertTrue(res_confirm.context['validlink'])
 
         # 5. Submit valid new password
-        res_submit = self.client.post(confirm_url, {
+        form_url = res_confirm.redirect_chain[-1][0] if res_confirm.redirect_chain else confirm_url
+        res_submit = self.client.post(form_url, {
             'new_password1': 'BrandNewPassword789!',
             'new_password2': 'BrandNewPassword789!',
         })
@@ -492,7 +493,7 @@ class AccountsTestCase(TestCase):
     def test_password_reset_invalid_token(self):
         """Test that invalid or expired token shows the invalid link message."""
         confirm_url = reverse('accounts:password_reset_confirm', kwargs={'uidb64': 'NA', 'token': 'invalid-token-123'})
-        res = self.client.get(confirm_url)
+        res = self.client.get(confirm_url, follow=True)
         self.assertEqual(res.status_code, 200)
         self.assertFalse(res.context['validlink'])
 

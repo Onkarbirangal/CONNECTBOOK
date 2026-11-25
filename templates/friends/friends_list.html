@@ -237,7 +237,7 @@
                                             <li>
                                                 <form action="{% url 'accounts:toggle_block' user_id=f.id %}" method="POST" class="m-0" onsubmit="return confirm('Block {{ f.get_display_name }}? You will no longer see each other\'s content.');">
                                                     {% csrf_token %}
-                                                    <input type="hidden" name="next" value="{% url 'friends:friends_list' %}">
+                                                    <input type="hidden" name="next" value="{% url 'friends:list' %}">
                                                     <button type="submit" class="cb-dropdown-item text-danger border-0 bg-transparent w-100 text-start">
                                                         <i class="bi bi-slash-circle text-danger me-2"></i>Block
                                                     </button>
@@ -767,7 +767,7 @@
                                     <div class="mt-3">
                                         <form action="{% url 'accounts:toggle_block' user_id=b.blocked.id %}" method="POST" class="m-0">
                                             {% csrf_token %}
-                                            <input type="hidden" name="next" value="{% url 'friends:friends_list' %}?tab=blocked">
+                                            <input type="hidden" name="next" value="{% url 'friends:list' %}?tab=blocked">
                                             <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
                                                 <i class="bi bi-unlock me-1"></i>Unblock User
                                             </button>

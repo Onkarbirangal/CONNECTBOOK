@@ -127,6 +127,67 @@
 
 ---
 
+### 6. Phase 1 — Accounts & Profile Implementation (November 2026)
+- **1. User Registration**:
+  - Full registration flow using `RegisterForm(UserCreationForm)`.
+  - Case-insensitive validation on username and email.
+  - Reserved system usernames guard (`admin`, `settings`, `api`, `login`, `register`, etc.).
+  - Date of birth validation preventing future dates and dates before 1900.
+  - Full display of all password strength errors with interactive client-side password meter.
+- **2. Login and Logout**:
+  - Flexible login via either case-insensitive username or email.
+  - Automatic `UserSessionRecord` tracking upon successful authentication.
+  - Automatic session deactivation (`is_active = False`) upon logout.
+  - "Remember me" session duration configuration.
+  - Safe open-redirect prevention using `url_has_allowed_host_and_scheme` across both GET and POST `next` parameters.
+- **3. Email and Username Validation**:
+  - Case-insensitive uniqueness checks on registration.
+  - Case-insensitive uniqueness checks on profile edits excluding current user instance.
+- **4. Password Strength Validation**:
+  - Server-side validation via `AUTH_PASSWORD_VALIDATORS` (MinimumLength, UserAttributeSimilarity, CommonPassword, NumericPassword).
+  - Client-side real-time interactive password strength meters on registration and password reset confirmation.
+- **5. Forgot and Reset Password**:
+  - Complete, fully functional Django password reset flow:
+    - `ConnectBookPasswordResetView` (`accounts:forgot_password`): Generates tokenized reset email.
+    - `ConnectBookPasswordResetDoneView` (`accounts:password_reset_done`): Instructions sent notification.
+    - `ConnectBookPasswordResetConfirmView` (`accounts:password_reset_confirm`): Secure token verification and password change form with validation.
+    - `ConnectBookPasswordResetCompleteView` (`accounts:password_reset_complete`): Reset confirmation and login button.
+  - Configured `EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'` for seamless local testing.
+  - Branded HTML email template (`password_reset_email.html`) and subject line.
+- **6. User Profile**:
+  - Profile hero with avatar, cover photo, bio, follow buttons, friendship status, and verification badges.
+  - Complete tabbed navigation: Posts, About, Friends, Photos, Videos, Reels, Stories, Likes, Saved, Marketplace.
+  - Private/locked profile protection (`can_view_content`) hiding sensitive timeline, photos, and personal information from non-friends.
+- **7. Edit Profile**:
+  - Unified form updating user basic info (`first_name`, `last_name`, `email`, `date_of_birth`, `gender`) and profile details (`bio`, `work`, `education`, `city`, `hometown`, `website`, `relationship_status`, `profile_visibility`, `show_email`, `show_dob`).
+  - Automatic synchronization between `UserProfile.profile_visibility` and `UserPrivacySetting.profile_visibility`.
+- **8 & 9. Profile and Cover Photo Uploads**:
+  - Upload via `edit_profile_view` or directly from profile hero modals (`update_avatar_view`, `update_cover_view`).
+  - Server-side and client-side 5MB file size limit guards.
+  - MIME type and image format validation preventing non-image file uploads.
+  - AJAX and standard multipart POST support with instant UI feedback.
+- **10. Bio and Personal Information**:
+  - Complete display on About tab with privacy badges (`Hidden from public`).
+  - Privacy gating allowing profile owners to review their own contact info while hiding it from external visitors.
+- **11. Change Password**:
+  - Custom `ConnectBookPasswordChangeForm` with Bootstrap 5 `.form-control` styling.
+  - `update_session_auth_hash` preserving the current active session.
+  - Error summary banners displaying non-field and field-level validation feedback.
+- **12. Account Privacy**:
+  - Comprehensive Privacy Center managing Post Audience, Story Privacy, Profile Visibility, Friends List Visibility, Friend Request Permissions, Message Permissions, Tagging Permissions, Mention Permissions, Search Discoverability, Active Status, and Read Receipts.
+  - One-click profile lock toggle (`toggle_profile_lock_view`).
+- **13. Block and Unblock Users**:
+  - Complete blocking support in `toggle_block_user_view`.
+  - Automatic removal of friendships, pending requests, and follow relationships in both directions upon blocking.
+  - Safe redirect preservation supporting `next` parameters and `HTTP_REFERER` across Settings, Privacy Center, Profile, and Friends Hub.
+  - AJAX JSON response support for seamless frontend integration.
+  - Dedicated `blocked_profile.html` preventing information leaks.
+- **14. User Permissions and Authorization**:
+  - Strict `@login_required` decorators on all sensitive and state-changing views.
+  - All profile edits, settings updates, and session revocations strictly scoped to `request.user` to prevent Insecure Direct Object References (IDOR).
+
+---
+
 ## 🧪 Automated Test Suite Output
 
 ```text

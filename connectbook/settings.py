@@ -14,8 +14,24 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-connectbook-default-dev-secret-key-3.12')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,testserver')
-ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
+
+allowed_hosts_str = os.getenv(
+    'ALLOWED_HOSTS',
+    '127.0.0.1,localhost,testserver'
+)
+
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in allowed_hosts_str.split(',')
+    if host.strip()
+]
+
+# Automatically allow Render hostname
+render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
 
 # Application definition
 INSTALLED_APPS = [

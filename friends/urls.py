@@ -5,6 +5,7 @@ app_name = 'friends'
 
 urlpatterns = [
     path('', views.friends_list_view, name='list'),
+    path('list/', views.friends_list_view, name='friends_list'),
     path('suggestions/', views.friend_suggestions_view, name='suggestions'),
     path('suggestions/dismiss/<int:user_id>/', views.dismiss_suggestion_api, name='dismiss_suggestion'),
     path('suggestions/undo-dismiss/<int:user_id>/', views.undo_dismiss_suggestion_api, name='undo_dismiss_suggestion'),
